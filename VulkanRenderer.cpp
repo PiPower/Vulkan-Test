@@ -12,10 +12,10 @@ struct Vertex
 };
 
 const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 2.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}
+    {{-0.5f, 0.5f, 2.0f}, {1.0f, 0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}
 };
 
 const std::vector<uint16_t> indices = {
@@ -276,10 +276,11 @@ void VulkanRenderer::CreateUbo()
     vkMapMemory(vulkanBase->device, uboDevMem, 0, buffInfo.size, 0, &data);
     UniformBufferObject ubo = {};
     //ubo.model = glm::rotate(glm::mat4(1.0f), 0.00f * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = lookAtRH23(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
-    ubo.proj = glm::perspectiveRH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width/
-                           (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1;
+   // ubo.view = lookAtRH23(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+    ubo.view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    //ubo.proj = glm::perspectiveRH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width/
+    //                       (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+    //ubo.proj[1][1] *= -1;
 
     auto test = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
