@@ -1,3 +1,8 @@
+#define RIGHT_FACE 4
+#define LEFT_FACE 8
+#define BACK_FACE 12
+#define BOTTOM_FACE 16
+#define TOP_FACE 20
 #include "VulkanRenderer.hpp"
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -12,14 +17,46 @@ struct Vertex
 };
 
 const std::vector<Vertex> vertices = {
-    {{-0.5f, 0.5f, 2.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}
+    // front face
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
+    {{0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}},
+    // right face
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
+    {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
+    {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
+    // left face
+    {{-0.5f, 0.5f,  -0.5f}, {1.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}},
+    {{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}},
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 0.0f}},
+    // back face
+    {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    // bottom face
+    {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    // top face
+    {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+
 };
 
 const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0
+    0, 1, 2, 2, 3, 0,
+    0 + RIGHT_FACE, 1 + RIGHT_FACE, 2 + RIGHT_FACE, 2 + RIGHT_FACE, 3 + RIGHT_FACE, 0 + RIGHT_FACE,
+    2 + LEFT_FACE, 1 + LEFT_FACE, 0 + LEFT_FACE, 0 + LEFT_FACE, 3 + LEFT_FACE, 2 + LEFT_FACE,
+    2 + BACK_FACE, 1 + BACK_FACE, 0 + BACK_FACE, 0 + BACK_FACE, 3 + BACK_FACE, 2 + BACK_FACE,
+    0 + BOTTOM_FACE, 1 + BOTTOM_FACE,2 + BOTTOM_FACE,  1 + BOTTOM_FACE, 3 + BOTTOM_FACE,  2 + BOTTOM_FACE,
+    2+ TOP_FACE, 1 + TOP_FACE, 0 + TOP_FACE, 2 + TOP_FACE, 3 + TOP_FACE, 1 + TOP_FACE,
 };
 
 
@@ -31,6 +68,47 @@ struct UniformBufferObject
     //matrix proj;
 };
 
+template<typename T>
+GLM_FUNC_QUALIFIER glm::mat<4, 4, T, glm::defaultp> perspectiveTest(T fovy, T aspect, T zNear, T zFar)
+{
+    using namespace glm;
+    assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
+
+    T const tanHalfFovy = tan(fovy / static_cast<T>(2));
+
+    mat<4, 4, T, defaultp> Result(static_cast<T>(0));
+    Result[0][0] = static_cast<T>(1) / (aspect * tanHalfFovy);
+    Result[1][1] = -static_cast<T>(1) / (tanHalfFovy); // flipped axes
+    Result[2][2] = zFar / (zFar - zNear);
+    Result[3][2] = -(zFar * zNear) / (zFar - zNear);
+    Result[2][3] = static_cast<T>(1);
+
+    return Result;
+}
+
+template<typename T, glm::qualifier Q>
+GLM_FUNC_QUALIFIER glm::mat<4, 4, T, Q> lookAtRH23(glm::vec<3, T, Q> const& eye, glm::vec<3, T, Q> const& center, glm::vec<3, T, Q> const& up)
+{
+    using namespace glm;
+    vec<3, T, Q> const f(normalize(center - eye));
+    vec<3, T, Q> const s(normalize(cross(f, up)));
+    vec<3, T, Q> const u(cross(s, f));
+
+    mat<4, 4, T, Q> Result(1);
+    Result[0][0] = s.x;
+    Result[1][0] = s.y;
+    Result[2][0] = s.z;
+    Result[0][1] = u.x;
+    Result[1][1] = u.y;
+    Result[2][1] = u.z;
+    Result[0][2] = f.x;
+    Result[1][2] = f.y;
+    Result[2][2] = f.z;
+    Result[3][0] = -dot(s, eye);
+    Result[3][1] = -dot(u, eye);
+    Result[3][2] = -dot(f, eye);
+    return Result;
+}
 
 VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd)
 {
@@ -88,7 +166,7 @@ void VulkanRenderer::Render()
     vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
     vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
 
-    vkCmdDrawIndexed(vulkanBase->cmdBuffer, 6, 1, 0, 0, 0);
+    vkCmdDrawIndexed(vulkanBase->cmdBuffer, indices.size(), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
     vkEndCommandBuffer(vulkanBase->cmdBuffer);
@@ -115,6 +193,34 @@ void VulkanRenderer::Render()
     vkQueuePresentKHR(vulkanBase->presentationQueue, &info);
 }
 
+void VulkanRenderer::updateRotation()
+{
+    UniformBufferObject ubo = {};
+    angle += 0.0001;
+// first box
+    ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
+    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 6.0f)) * ubo.model;
+    ubo.view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+    ubo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;
+    memcpy(uboData, &ubo, sizeof(UniformBufferObject));
+
+    ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
+    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 6.0f)) * ubo.model;
+    ubo.view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+    ubo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;
+    memcpy(uboData, &ubo, sizeof(UniformBufferObject));
+}
+
 VulkanRenderer::~VulkanRenderer()
 {
 }
@@ -123,7 +229,7 @@ void VulkanRenderer::CreateVertexBuffer()
 {
     VkBufferCreateInfo buffInfo = {};
     buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffInfo.size = sizeof(Vertex) * 4;
+    buffInfo.size = sizeof(Vertex) * vertices.size();
     buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -162,7 +268,7 @@ void VulkanRenderer::CreateIndexBuffer()
 {
     VkBufferCreateInfo buffInfo = {};
     buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffInfo.size = sizeof(uint16_t) * 6;
+    buffInfo.size = sizeof(uint16_t) * indices.size();
     buffInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -197,53 +303,11 @@ void VulkanRenderer::CreateIndexBuffer()
     vkUnmapMemory(vulkanBase->device, ibDevMem);
 }
 
-
-template<typename T>
-GLM_FUNC_QUALIFIER glm::mat<4, 4, T, glm::defaultp> perspectiveTest(T fovy, T aspect, T zNear, T zFar)
-{
-    using namespace glm;
-    assert(abs(aspect - std::numeric_limits<T>::epsilon()) > static_cast<T>(0));
-
-    T const tanHalfFovy = tan(fovy / static_cast<T>(2));
-
-    mat<4, 4, T, defaultp> Result(static_cast<T>(0));
-    Result[0][0] = static_cast<T>(1) / (aspect * tanHalfFovy);
-    Result[1][1] = -static_cast<T>(1) / (tanHalfFovy);
-    Result[2][2] = zFar / (zFar - zNear);
-    Result[3][2] = -(zFar * zNear) / (zFar - zNear);
-    Result[2][3] = static_cast<T>(1);
-    return Result;
-}
-
-template<typename T, glm::qualifier Q>
-GLM_FUNC_QUALIFIER glm::mat<4, 4, T, Q> lookAtRH23(glm::vec<3, T, Q> const& eye, glm::vec<3, T, Q> const& center, glm::vec<3, T, Q> const& up)
-{
-    using namespace glm;
-    vec<3, T, Q> const f(normalize(center - eye));
-    vec<3, T, Q> const s(normalize(cross(f, up)));
-    vec<3, T, Q> const u(cross(s, f));
-
-    mat<4, 4, T, Q> Result(1);
-    Result[0][0] = s.x;
-    Result[1][0] = s.y;
-    Result[2][0] = s.z;
-    Result[0][1] = u.x;
-    Result[1][1] = u.y;
-    Result[2][1] = u.z;
-    Result[0][2] = f.x;
-    Result[1][2] = f.y;
-    Result[2][2] = f.z;
-    Result[3][0] = -dot(s, eye);
-    Result[3][1] = -dot(u, eye);
-    Result[3][2] = -dot(f, eye);
-    return Result;
-}
-
 void VulkanRenderer::CreateUbo()
 {
     VkBufferCreateInfo buffInfo = {};
     buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffInfo.size = sizeof(UniformBufferObject);
+    buffInfo.size = sizeof(UniformBufferObject) * 2;
     buffInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
@@ -271,21 +335,8 @@ void VulkanRenderer::CreateUbo()
 
     vkAllocateMemory(vulkanBase->device, &allocInfo, nullptr, &uboDevMem);
     vkBindBufferMemory(vulkanBase->device, uboBuffer, uboDevMem, 0);
-
-    void* data;
-    vkMapMemory(vulkanBase->device, uboDevMem, 0, buffInfo.size, 0, &data);
-    UniformBufferObject ubo = {};
-    ubo.model = glm::mat4(1.0f);
-    ubo.view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-                       (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
-
-    glm::vec4 t = ubo.view * glm::vec4(vertices[0].pos, 1.0f);
-    glm::vec4 res  = ubo.proj * t;
-    glm::vec4 res2 = res / res.w;
-
-    memcpy(data, &ubo, sizeof(UniformBufferObject));
-    vkUnmapMemory(vulkanBase->device, uboDevMem);
+    //vkBindBufferMemory(vulkanBase->device, uboBuffer2, uboDevMem, sizeof(UniformBufferObject));
+    vkMapMemory(vulkanBase->device, uboDevMem, 0, buffInfo.size, 0, &uboData);
 }
 
 void VulkanRenderer::CreateGraphicsPipeline()

@@ -242,7 +242,7 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDev, QueuesIdx queuesIdx)
 	}
 
 	VkPhysicalDeviceFeatures features = {};
-
+	
 	VkDeviceCreateInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	info.pQueueCreateInfos = queueInfos;

@@ -9,6 +9,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     while (wnd->ProcessMessages() == 0)
     {
         renderer->Render();
+        renderer->updateRotation();
     }
 
 }

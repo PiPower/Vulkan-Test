@@ -8,6 +8,7 @@ class VulkanRenderer
 public:
 	VulkanRenderer(HINSTANCE hinstance, HWND hwnd);
 	void Render();
+	void updateRotation();
 	~VulkanRenderer();
 private:
 	void CreateVertexBuffer();
@@ -25,7 +26,10 @@ private:
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stDevMem;
 	VkBuffer uboBuffer;
+	VkBuffer uboBuffer2;
 	VkDeviceMemory uboDevMem;
+	void* uboData;
+	float angle = 0.0f;
 
 	VkDescriptorPool descPool;
 	VkDescriptorSet descSet;
