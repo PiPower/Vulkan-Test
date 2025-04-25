@@ -164,8 +164,11 @@ void VulkanRenderer::Render()
     VkDeviceSize offsets[] = { 0 };
     vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &vertexBuffer, offsets);
     vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
-    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
 
+    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
+    vkCmdDrawIndexed(vulkanBase->cmdBuffer, indices.size(), 1, 0, 0, 0);
+
+    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet2, 0, nullptr);
     vkCmdDrawIndexed(vulkanBase->cmdBuffer, indices.size(), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
@@ -209,16 +212,10 @@ void VulkanRenderer::updateRotation()
     ubo.proj[1][1] *= -1;
     memcpy(uboData, &ubo, sizeof(UniformBufferObject));
 
-    ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
-    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 6.0f)) * ubo.model;
-    ubo.view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
-    ubo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1;
-    memcpy(uboData, &ubo, sizeof(UniformBufferObject));
+    ubo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
+    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 6.0f)) * ubo.model;
+    memcpy((char*)uboData + sizeof(UniformBufferObject), &ubo, sizeof(UniformBufferObject));
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -307,11 +304,12 @@ void VulkanRenderer::CreateUbo()
 {
     VkBufferCreateInfo buffInfo = {};
     buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffInfo.size = sizeof(UniformBufferObject) * 2;
+    buffInfo.size = sizeof(UniformBufferObject);
     buffInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &uboBuffer);
+    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &uboBuffer2);
 
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(vulkanBase->device, uboBuffer, &memRequirements);
@@ -330,12 +328,12 @@ void VulkanRenderer::CreateUbo()
 
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.allocationSize = memRequirements.size * 2;
     allocInfo.memoryTypeIndex = i;
 
     vkAllocateMemory(vulkanBase->device, &allocInfo, nullptr, &uboDevMem);
     vkBindBufferMemory(vulkanBase->device, uboBuffer, uboDevMem, 0);
-    //vkBindBufferMemory(vulkanBase->device, uboBuffer2, uboDevMem, sizeof(UniformBufferObject));
+    vkBindBufferMemory(vulkanBase->device, uboBuffer2, uboDevMem, memRequirements.size);
     vkMapMemory(vulkanBase->device, uboDevMem, 0, buffInfo.size, 0, &uboData);
 }
 
@@ -502,11 +500,11 @@ void VulkanRenderer::CreatePoolAndSets()
 {
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = 1;
+    poolSize.descriptorCount = 2;
 
     VkDescriptorPoolCreateInfo poolDesc = {};
     poolDesc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolDesc.maxSets = 1;
+    poolDesc.maxSets = 2;
     poolDesc.poolSizeCount = 1;
     poolDesc.pPoolSizes = &poolSize;
     vkCreateDescriptorPool(vulkanBase->device, &poolDesc, nullptr, &descPool);
@@ -517,6 +515,7 @@ void VulkanRenderer::CreatePoolAndSets()
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &descSetLayout;
     vkAllocateDescriptorSets(vulkanBase->device, &allocInfo, &descSet);
+    vkAllocateDescriptorSets(vulkanBase->device, &allocInfo, &descSet2);
 
     VkDescriptorBufferInfo bufferInfo{};
     bufferInfo.buffer = uboBuffer;
@@ -531,6 +530,10 @@ void VulkanRenderer::CreatePoolAndSets()
     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorWrite.descriptorCount = 1;
     descriptorWrite.pBufferInfo = &bufferInfo;
+    vkUpdateDescriptorSets(vulkanBase->device, 1, &descriptorWrite, 0, nullptr);
+
+    bufferInfo.buffer = uboBuffer2;
+    descriptorWrite.dstSet = descSet2;
     vkUpdateDescriptorSets(vulkanBase->device, 1, &descriptorWrite, 0, nullptr);
 }
 

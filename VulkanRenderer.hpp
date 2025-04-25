@@ -33,6 +33,7 @@ private:
 
 	VkDescriptorPool descPool;
 	VkDescriptorSet descSet;
+	VkDescriptorSet descSet2;
 	VkDescriptorSetLayout descSetLayout;
 
 	VkPipeline pipeline;
