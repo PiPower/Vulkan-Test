@@ -141,9 +141,12 @@ void VulkanRenderer::Render()
     renderPassInfo.framebuffer = vulkanBase->swapchainFramebuffers[imageIndex];
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = vulkanBase->swapchainInfo.capabilities.currentExtent;
-    VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
-    renderPassInfo.clearValueCount = 1;
-    renderPassInfo.pClearValues = &clearColor;
+    VkClearValue clearColor[2] = {};
+    clearColor[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    clearColor[1].depthStencil = { 1.0f, 0 };
+
+    renderPassInfo.clearValueCount = 2;
+    renderPassInfo.pClearValues = clearColor;
     vkCmdBeginRenderPass(vulkanBase->cmdBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -451,6 +454,14 @@ void VulkanRenderer::CreateGraphicsPipeline()
     dynamicState.dynamicStateCount = 2;
     dynamicState.pDynamicStates = dynamicStates;
 
+    VkPipelineDepthStencilStateCreateInfo depthInfo = {};
+    depthInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthInfo.depthTestEnable = VK_TRUE;
+    depthInfo.depthWriteEnable = VK_TRUE;
+    depthInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthInfo.depthBoundsTestEnable = VK_FALSE;
+    depthInfo.stencilTestEnable = VK_FALSE;
+
     VkGraphicsPipelineCreateInfo pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     pipelineInfo.stageCount = 2;
@@ -460,7 +471,7 @@ void VulkanRenderer::CreateGraphicsPipeline()
     pipelineInfo.pViewportState = &vpInfo;
     pipelineInfo.pRasterizationState = &rasterInfo;
     pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pDepthStencilState = nullptr; // Optional
+    pipelineInfo.pDepthStencilState = &depthInfo; // Optional
     pipelineInfo.pColorBlendState = &blendInfo;
     pipelineInfo.pDynamicState = &dynamicState;
     pipelineInfo.layout = pipelineLayout;

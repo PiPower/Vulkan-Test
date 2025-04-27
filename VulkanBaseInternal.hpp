@@ -34,6 +34,6 @@ std::vector<VkImageView> createSwapchainImageViews(VkDevice device, const std::v
 VkCommandPool createCommandPool(VkDevice device, uint32_t queueIdx);
 std::vector<VkCommandBuffer> createCommandBuffers(VkDevice device, VkCommandPool cmdPool, uint32_t bufferCount);
 VkRenderPass createRenderPass(VkDevice device, VkFormat imgFormat);
-std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkRenderPass renderPass, 
+std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkRenderPass renderPass, VkImageView depthView,
 												const std::vector<VkImageView> imgViews, const SwapchainInfo& swcInfo);
 DepthBufferBundle createDepthBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const SwapchainInfo& swcInfo);

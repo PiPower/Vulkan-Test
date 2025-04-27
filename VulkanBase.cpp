@@ -119,7 +119,7 @@ VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd)
 	vulkanBase->depthImage = bundle.depthImage;
 	vulkanBase->depthImageMemory = bundle.depthImageMemory;
 	vulkanBase->depthImageView = bundle.depthImageView;
-	vulkanBase->swapchainFramebuffers = createFramebuffers(vulkanBase->device, vulkanBase->renderPass,
+	vulkanBase->swapchainFramebuffers = createFramebuffers(vulkanBase->device, vulkanBase->renderPass, vulkanBase->depthImageView,
 															vulkanBase->swapchainImageViews, vulkanBase->swapchainInfo);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
@@ -443,17 +443,19 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat imgFormat)
 	return renderPass;
 }
 
-std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkRenderPass renderPass,
+std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkRenderPass renderPass, VkImageView depthView,
 												const std::vector<VkImageView> imgViews, const SwapchainInfo& swcInfo)
 {
 	vector<VkFramebuffer> framebuffers(imgViews.size());
 	for (size_t i = 0; i < imgViews.size(); i++)
 	{
+		VkImageView views[2] = { imgViews[i], depthView };
+
 		VkFramebufferCreateInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		info.renderPass = renderPass;
-		info.attachmentCount = 1;
-		info.pAttachments = &imgViews[i];
+		info.attachmentCount = 2;
+		info.pAttachments = views;
 		info.width = swcInfo.capabilities.currentExtent.width;
 		info.height = swcInfo.capabilities.currentExtent.height;
 		info.layers = 1;
