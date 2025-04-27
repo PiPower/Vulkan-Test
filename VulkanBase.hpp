@@ -33,6 +33,9 @@ struct VulkanBase
 	std::vector<VkImage> swapchainImages;
 	std::vector<VkImageView> swapchainImageViews;
 	std::vector<VkFramebuffer> swapchainFramebuffers;
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
 	VkCommandPool cmdPool;
 	VkCommandBuffer cmdBuffer;
 	VkRenderPass renderPass;

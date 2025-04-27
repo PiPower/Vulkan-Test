@@ -25,6 +25,12 @@ void validateVkResult(VkResult result)
 	exit(-1);
 }
 
+void exitOnError(const wchar_t* errMsg)
+{
+	MessageBox(NULL, errMsg, NULL, MB_OK);
+	exit(-1);
+}
+
 VkBool32 vbDebugVal(
 	VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
@@ -109,6 +115,10 @@ VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd)
 	vulkanBase->cmdPool = createCommandPool(vulkanBase->device, vulkanBase->queueFamilies.grahicsIdx);
 	vulkanBase->cmdBuffer = createCommandBuffers(vulkanBase->device, vulkanBase->cmdPool, 1)[0];
 	vulkanBase->renderPass = createRenderPass(vulkanBase->device, vulkanBase->swapchainFormat);
+	DepthBufferBundle bundle = createDepthBuffer(vulkanBase->device, vulkanBase->physicalDevice, vulkanBase->swapchainInfo);
+	vulkanBase->depthImage = bundle.depthImage;
+	vulkanBase->depthImageMemory = bundle.depthImageMemory;
+	vulkanBase->depthImageView = bundle.depthImageView;
 	vulkanBase->swapchainFramebuffers = createFramebuffers(vulkanBase->device, vulkanBase->renderPass,
 															vulkanBase->swapchainImageViews, vulkanBase->swapchainInfo);
 
@@ -437,6 +447,75 @@ std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkRenderPass rend
 		CHECK_VK_RESULT(vkCreateFramebuffer(device, &info, nullptr, &framebuffers[i]));
 	}
 	return framebuffers;
+}
+
+DepthBufferBundle createDepthBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const SwapchainInfo& swcInfo)
+{
+	DepthBufferBundle bundleOut = {};
+
+
+	VkFormatProperties props;
+	vkGetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_D32_SFLOAT_S8_UINT, &props);
+	if ((props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) == 0)
+	{
+		exitOnError(L"Unsupported VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT for optimal features\n");
+	}
+
+	VkImageCreateInfo imageInfo = {};
+	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageInfo.extent.width = swcInfo.capabilities.currentExtent.width;
+	imageInfo.extent.height = swcInfo.capabilities.currentExtent.height;
+	imageInfo.extent.depth = 1;
+	imageInfo.mipLevels = 1;
+	imageInfo.arrayLayers = 1;
+	imageInfo.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	CHECK_VK_RESULT(vkCreateImage(device, &imageInfo, nullptr, &bundleOut.depthImage));
+
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(device, bundleOut.depthImage, &memRequirements);
+
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+	uint32_t i;
+	for (i = 0; i < memProperties.memoryTypeCount; i++)
+	{
+		if ((memRequirements.memoryTypeBits & (1 << i)) &&
+			(memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+		{
+			break;
+		}
+	}
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = i;
+	CHECK_VK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &bundleOut.depthImageMemory));
+	CHECK_VK_RESULT(vkBindImageMemory(device, bundleOut.depthImage, bundleOut.depthImageMemory, 0));
+
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = bundleOut.depthImage;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+	CHECK_VK_RESULT(vkCreateImageView(device, &viewInfo, nullptr, &bundleOut.depthImageView));
+	return bundleOut;
 }
 
 VkSwapchainKHR createSwapchain(VkDevice device, VkSurfaceKHR surface, const SwapchainInfo& swapchainInfo, 

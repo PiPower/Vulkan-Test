@@ -9,6 +9,13 @@ VkBool32 vbDebugVal(
 	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 	void* pUserData);
 
+struct DepthBufferBundle
+{
+	VkImage depthImage;
+	VkDeviceMemory depthImageMemory;
+	VkImageView depthImageView;
+};
+
 void validateVkResult(VkResult result);
 VkInstance createInstance();
 VkPhysicalDevice pickPhysicalDevice(VkInstance instance);
@@ -29,3 +36,4 @@ std::vector<VkCommandBuffer> createCommandBuffers(VkDevice device, VkCommandPool
 VkRenderPass createRenderPass(VkDevice device, VkFormat imgFormat);
 std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkRenderPass renderPass, 
 												const std::vector<VkImageView> imgViews, const SwapchainInfo& swcInfo);
+DepthBufferBundle createDepthBuffer(VkDevice device, VkPhysicalDevice physicalDevice, const SwapchainInfo& swcInfo);
