@@ -203,7 +203,7 @@ void VulkanRenderer::updateRotation()
 // first box
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
-    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 6.0f)) * ubo.model;
+    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)) * ubo.model;
     ubo.view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
@@ -214,7 +214,7 @@ void VulkanRenderer::updateRotation()
 
     ubo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
-    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(2.0f, 0.0f, 6.0f)) * ubo.model;
+    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 6.0f)) * ubo.model;
     memcpy((char*)uboData + sizeof(UniformBufferObject), &ubo, sizeof(UniformBufferObject));
 }
 
