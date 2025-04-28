@@ -66,7 +66,10 @@ struct UniformBufferObject
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
+    glm::vec4 lightPos; // w component is 
+    glm::vec4 lightCol; // w component is 
     //matrix proj;
+    char alignment[256 - 224];
 };
 
 template<typename T>
@@ -203,17 +206,19 @@ void VulkanRenderer::Render()
 void VulkanRenderer::updateRotation()
 {
     UniformBufferObject ubo = {};
-    angle += 0.0001;
+    angle = 0;
 // first box
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
-    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 2.0f)) * ubo.model;
-    ubo.view = glm::lookAtLH(glm::vec3(0.0f, 0.0f, -2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)) * ubo.model;
+    ubo.view = glm::lookAtLH(glm::vec3(4.0f, 2.0f, -2.0f), glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
     ubo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
     ubo.proj[1][1] *= -1;
+    ubo.lightPos = glm::vec4(0.0f, 0.0f, -4.0f, 0.0f);
+    ubo.lightCol = glm::vec4(0.7f, 0.7f, 0.4f, 0.47f);
     memcpy(uboData, &ubo, sizeof(UniformBufferObject));
 
     ubo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
