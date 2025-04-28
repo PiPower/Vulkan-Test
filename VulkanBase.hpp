@@ -4,6 +4,8 @@
 #include <Windows.h>
 #include <vector>
 
+#define CHECK_VK_RESULT(result) validateVkResult(result)
+
 struct QueuesIdx
 {
 	int64_t grahicsIdx;
@@ -45,3 +47,4 @@ struct VulkanBase
 };
 
 VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd);
+void validateVkResult(VkResult result);

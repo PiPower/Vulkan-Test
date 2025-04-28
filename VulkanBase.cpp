@@ -3,8 +3,6 @@
 #include "VulkanBaseInternal.hpp"
 #pragma comment(lib,"C:\\VulkanSDK\\1.4.304.1\\Lib\\vulkan-1.lib")
 using namespace std;
-#define CHECK_VK_RESULT(result) validateVkResult(result)
-
 const static char* instExt[] = {
 					 VK_KHR_SURFACE_EXTENSION_NAME,
 					 VK_EXT_DEBUG_UTILS_EXTENSION_NAME,

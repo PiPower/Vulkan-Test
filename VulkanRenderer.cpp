@@ -4,6 +4,7 @@
 #define BOTTOM_FACE 16
 #define TOP_FACE 20
 #include "VulkanRenderer.hpp"
+#include "VulkanOps.hpp"
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -346,14 +347,11 @@ void VulkanRenderer::CreateGraphicsPipeline()
     std::vector<char> fragSrc = readFile("frag.spv");
 
     VkShaderModule vsModule, fsModule;
-    VkShaderModuleCreateInfo moduleInfo = {};
-    moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleInfo.codeSize = vertSrc.size();
-    moduleInfo.pCode = (uint32_t*)vertSrc.data();
-    vkCreateShaderModule(vulkanBase->device, &moduleInfo, nullptr, &vsModule);
-    moduleInfo.codeSize = fragSrc.size();
-    moduleInfo.pCode = (uint32_t*)fragSrc.data();
-    vkCreateShaderModule(vulkanBase->device, &moduleInfo, nullptr, &fsModule);
+    shaderc_compiler_t compiler = shaderc_compiler_initialize();
+    fsModule = compileShader(vulkanBase->device, nullptr, "09_shader_base.frag", "main", shaderc_fragment_shader, compiler);
+    vsModule = compileShader(vulkanBase->device, nullptr, "09_shader_base.vert", "main", shaderc_vertex_shader, compiler);
+    shaderc_compiler_release(compiler);
+
 
     VkPipelineShaderStageCreateInfo shaderInfo[2] = {};
     shaderInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
