@@ -130,6 +130,41 @@ VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd)
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 	CHECK_VK_RESULT(vkCreateFence(vulkanBase->device, &fenceInfo, nullptr, &vulkanBase->gfxQueueFinished));
 
+	// transition all required resources 
+	VkCommandBufferBeginInfo cmdBuffInfo = {};
+	cmdBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBuffInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	vkResetCommandBuffer(vulkanBase->cmdBuffer, 0);
+	vkBeginCommandBuffer(vulkanBase->cmdBuffer, &cmdBuffInfo);
+
+
+	VkImageMemoryBarrier depthBarrier = {};
+	depthBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	depthBarrier.srcAccessMask = 0;
+	depthBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+	depthBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depthBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	depthBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	depthBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	depthBarrier.image = vulkanBase->depthImage;
+	depthBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+	depthBarrier.subresourceRange.baseMipLevel = 0;
+	depthBarrier.subresourceRange.levelCount = 1;
+	depthBarrier.subresourceRange.baseArrayLayer = 0;
+	depthBarrier.subresourceRange.layerCount = 1;
+
+	vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 0, 0, nullptr, 0, nullptr, 1, &depthBarrier);
+
+
+	vkEndCommandBuffer(vulkanBase->cmdBuffer);
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &vulkanBase->cmdBuffer;
+	vkQueueSubmit(vulkanBase->graphicsQueue, 1, &submitInfo, nullptr);
+	CHECK_VK_RESULT(vkQueueWaitIdle(vulkanBase->graphicsQueue));
+
 	return vulkanBase;
 }
 
@@ -403,7 +438,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat imgFormat)
 	attachmentDesc[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachmentDesc[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachmentDesc[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference colorAttachmentRef{};
