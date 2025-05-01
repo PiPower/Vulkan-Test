@@ -151,6 +151,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ImageFile.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="VulkanOps.cpp" />
     <ClCompile Include="VulkanBase.cpp" />
@@ -160,6 +161,7 @@
     <None Include="XX_main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ImageFile.h" />
     <ClInclude Include="VulkanBase.hpp" />
     <ClInclude Include="VulkanBaseInternal.hpp" />
     <ClInclude Include="VulkanOps.hpp" />

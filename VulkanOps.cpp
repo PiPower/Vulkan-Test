@@ -77,6 +77,7 @@ Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32
     texture.alignment = memRequirements.alignment;
     texture.memory = allocateBuffer(device, physicalDevice, memRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
+    CHECK_VK_RESULT(vkBindImageMemory(device, texture.texImage, texture.memory, 0));
     return texture;
 }
 

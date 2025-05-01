@@ -1,6 +1,7 @@
 #pragma once
 
 #include "VulkanBase.hpp"
+#include "VulkanOps.hpp"
 #include <string>
 
 class VulkanRenderer
@@ -17,6 +18,7 @@ private:
 	void CreateGraphicsPipeline();
 	void CreatePipelineLayout();
 	void CreatePoolAndSets();
+	void prepareTexture();
 	static std::vector<char> readFile(const std::string& filename);
 private:
 	VkBuffer vertexBuffer;
@@ -39,4 +41,5 @@ private:
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
 	VulkanBase* vulkanBase;
+	Texture tex;
 };
