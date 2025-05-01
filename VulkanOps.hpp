@@ -7,8 +7,8 @@ enum class MyEnumClass
 
 };
 
-void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-	VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* devMem);
+VkDeviceMemory allocateBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
+							  VkMemoryRequirements memRequirements, VkMemoryPropertyFlags properties);
 
 VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
 							 const char* path, const char* entryName,

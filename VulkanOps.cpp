@@ -27,12 +27,29 @@ static std::vector<char> readFile(const std::string& filename)
 
 }
 
-void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage,
-					VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* devMem)
+VkDeviceMemory allocateBuffer(VkDevice device,VkPhysicalDevice physicalDevice, 
+                              VkMemoryRequirements memRequirements, VkMemoryPropertyFlags properties)
 {
-	//vkCreateBuffer()
-}
+    VkDeviceMemory devMem;
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+    uint32_t i;
+    for (i = 0; i < memProperties.memoryTypeCount; i++)
+    {
+        if ((memRequirements.memoryTypeBits & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+            break;
+        }
+    }
 
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = i;
+
+    CHECK_VK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &devMem));
+    return devMem;
+}
 
 VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
                              const char* path, const char* entryName,

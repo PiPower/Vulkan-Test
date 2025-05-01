@@ -243,26 +243,9 @@ void VulkanRenderer::CreateVertexBuffer()
 
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(vulkanBase->device, vertexBuffer, &memRequirements);
-
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(vulkanBase->physicalDevice, &memProperties);
-    uint32_t i;
-    VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    for (i = 0; i < memProperties.memoryTypeCount; i++)
-    {
-        if ((memRequirements.memoryTypeBits & (1 << i)) &&
-            (memProperties.memoryTypes[i].propertyFlags & props) == props) {
-            break;
-        }
-    }
-
-    VkMemoryAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = i;
-
-    vkAllocateMemory(vulkanBase->device, &allocInfo, nullptr, &vbDevMem);
+    vbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     vkBindBufferMemory(vulkanBase->device, vertexBuffer, vbDevMem, 0);
+
 
     void* data;
     vkMapMemory(vulkanBase->device, vbDevMem, 0, buffInfo.size, 0, &data);
@@ -282,25 +265,8 @@ void VulkanRenderer::CreateIndexBuffer()
 
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(vulkanBase->device, indexBuffer, &memRequirements);
+    ibDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-    VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(vulkanBase->physicalDevice, &memProperties);
-    uint32_t i;
-    VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    for (i = 0; i < memProperties.memoryTypeCount; i++)
-    {
-        if ((memRequirements.memoryTypeBits & (1 << i)) &&
-            (memProperties.memoryTypes[i].propertyFlags & props) == props) {
-            break;
-        }
-    }
-
-    VkMemoryAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = i;
-
-    vkAllocateMemory(vulkanBase->device, &allocInfo, nullptr, &ibDevMem);
     vkBindBufferMemory(vulkanBase->device, indexBuffer, ibDevMem, 0);
 
     void* data;
