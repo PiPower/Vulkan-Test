@@ -1,5 +1,6 @@
 #include "VulkanBase.hpp"
 #include <vector>
+#include "VulkanOps.hpp"
 #include "VulkanBaseInternal.hpp"
 #pragma comment(lib,"C:\\VulkanSDK\\1.4.304.1\\Lib\\vulkan-1.lib")
 using namespace std;
@@ -528,24 +529,7 @@ DepthBufferBundle createDepthBuffer(VkDevice device, VkPhysicalDevice physicalDe
 
 	VkMemoryRequirements memRequirements;
 	vkGetImageMemoryRequirements(device, bundleOut.depthImage, &memRequirements);
-
-	VkPhysicalDeviceMemoryProperties memProperties;
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
-	uint32_t i;
-	for (i = 0; i < memProperties.memoryTypeCount; i++)
-	{
-		if ((memRequirements.memoryTypeBits & (1 << i)) &&
-			(memProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-		{
-			break;
-		}
-	}
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = i;
-	CHECK_VK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &bundleOut.depthImageMemory));
+	bundleOut.depthImageMemory = allocateBuffer(device, physicalDevice, memRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	CHECK_VK_RESULT(vkBindImageMemory(device, bundleOut.depthImage, bundleOut.depthImageMemory, 0));
 
 	VkImageViewCreateInfo viewInfo = {};
