@@ -73,11 +73,22 @@ Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32
 
     VkMemoryRequirements memRequirements = {};
     vkGetImageMemoryRequirements(device, texture.texImage, &memRequirements);
-    
     texture.alignment = memRequirements.alignment;
     texture.memory = allocateBuffer(device, physicalDevice, memRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     CHECK_VK_RESULT(vkBindImageMemory(device, texture.texImage, texture.memory, 0));
+
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = texture.texImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+    CHECK_VK_RESULT(vkCreateImageView(device, &viewInfo, nullptr, &texture.texView));
     return texture;
 }
 

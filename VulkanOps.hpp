@@ -6,6 +6,7 @@ struct Texture
 {
 	VkImage texImage;
 	VkDeviceMemory memory;
+	VkImageView texView;
 	VkDeviceSize alignment;
 };
 
