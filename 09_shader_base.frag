@@ -11,6 +11,6 @@ layout(location = 0) out vec4 outColor;
 void main() {
     vec3 colorScalling = lightColIn.w *  lightColIn.xyz;
     vec3 objColor = fragColor * colorScalling;
-    outColor = vec4(objColor, 1.0);
+    //outColor = vec4(objColor, 1.0);
     outColor = texture(texSampler, texCoord);
 }

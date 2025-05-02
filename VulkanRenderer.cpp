@@ -11,6 +11,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <fstream>
 #include "ImageFile.h"
+#define TEXTURE_FORMAT VK_FORMAT_R8G8B8A8_SRGB
+
 using namespace std;
 struct Vertex
 {
@@ -21,10 +23,10 @@ struct Vertex
 
 const std::vector<Vertex> vertices = {
     // front face
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.69f, 0.0f}},
     {{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
     {{0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}, {0.69f, 1.0f}},
     // right face
     {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
     {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
@@ -215,7 +217,7 @@ void VulkanRenderer::updateRotation()
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
     ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)) * ubo.model;
-    ubo.view = glm::lookAtLH(glm::vec3(4.0f, 2.0f, -2.0f), glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.view = glm::lookAtLH(glm::vec3(0.5f, 0.0f, -4.0f), glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
     ubo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
@@ -557,8 +559,8 @@ void VulkanRenderer::CreateSampler()
 
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.magFilter = VK_FILTER_LINEAR;
-    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.magFilter = VK_FILTER_NEAREST;
+    samplerInfo.minFilter = VK_FILTER_NEAREST;
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -582,14 +584,14 @@ void VulkanRenderer::PrepareTexture()
 
     unsigned int* ptr = texImage.GetFilePtr();
     unsigned int sd = * ptr;
-    for (int i = 0; i < texImage.GetWidth(); i++)
+    for (int i = 0; i < texImage.GetWidth() * texImage.GetHeight(); i++)
     {
-        //*ptr = 0xFF'2c'58'8e;
-        //ptr++;
+        *ptr &= 0xFF'FF'FF'FF;
+        ptr++;
         //break;
     }
 
-    tex = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice, texImage.GetWidth(), texImage.GetHeight(), VK_FORMAT_R8G8B8A8_UNORM);
+    tex = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice, texImage.GetWidth(), texImage.GetHeight(), TEXTURE_FORMAT);
     
     VkBufferCreateInfo buffInfo = {};
     buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
