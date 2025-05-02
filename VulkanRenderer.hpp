@@ -18,7 +18,8 @@ private:
 	void CreateGraphicsPipeline();
 	void CreatePipelineLayout();
 	void CreatePoolAndSets();
-	void prepareTexture();
+	void CreateSampler();
+	void PrepareTexture();
 	static std::vector<char> readFile(const std::string& filename);
 private:
 	VkBuffer vertexBuffer;
@@ -42,4 +43,5 @@ private:
 	VkPipelineLayout pipelineLayout;
 	VulkanBase* vulkanBase;
 	Texture tex;
+	VkSampler sampler;
 };

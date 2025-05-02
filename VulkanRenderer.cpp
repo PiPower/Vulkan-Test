@@ -121,10 +121,11 @@ VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd)
     CreateVertexBuffer();
     CreateIndexBuffer();
     CreateUbo();
+    CreateSampler();
+    PrepareTexture();
     CreatePipelineLayout();
     CreatePoolAndSets();
     CreateGraphicsPipeline();
-    prepareTexture();
 }
 
 void VulkanRenderer::Render()
@@ -456,17 +457,24 @@ void VulkanRenderer::CreateGraphicsPipeline()
 
 void VulkanRenderer::CreatePipelineLayout()
 {
-    VkDescriptorSetLayoutBinding bindings = {};
-    bindings.binding = 0;
-    bindings.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    bindings.descriptorCount = 1;
-    bindings.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    bindings.pImmutableSamplers = nullptr;
+    VkDescriptorSetLayoutBinding bindings[2] = {};
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    bindings[0].pImmutableSamplers = nullptr;
+
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    bindings[1].descriptorCount = 1;
+    bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings[1].pImmutableSamplers = nullptr;
+
 
     VkDescriptorSetLayoutCreateInfo descSetLayoutInfo = {};
     descSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descSetLayoutInfo.bindingCount = 1;
-    descSetLayoutInfo.pBindings = &bindings;
+    descSetLayoutInfo.bindingCount = 2;
+    descSetLayoutInfo.pBindings = bindings;
     vkCreateDescriptorSetLayout(vulkanBase->device, &descSetLayoutInfo, nullptr, &descSetLayout);
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
@@ -480,15 +488,18 @@ void VulkanRenderer::CreatePipelineLayout()
 
 void VulkanRenderer::CreatePoolAndSets()
 {
-    VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = 2;
+    VkDescriptorPoolSize poolSize[2] = {};
+    poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSize[0].descriptorCount = 2;
+    poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize[1].descriptorCount = 2;
+
 
     VkDescriptorPoolCreateInfo poolDesc = {};
     poolDesc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolDesc.maxSets = 2;
-    poolDesc.poolSizeCount = 1;
-    poolDesc.pPoolSizes = &poolSize;
+    poolDesc.poolSizeCount = 2;
+    poolDesc.pPoolSizes = poolSize;
     vkCreateDescriptorPool(vulkanBase->device, &poolDesc, nullptr, &descPool);
 
     VkDescriptorSetAllocateInfo allocInfo = {};
@@ -504,22 +515,59 @@ void VulkanRenderer::CreatePoolAndSets()
     bufferInfo.offset = 0;
     bufferInfo.range = sizeof(UniformBufferObject);
 
-    VkWriteDescriptorSet descriptorWrite{};
-    descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.dstSet = descSet;
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferInfo;
-    vkUpdateDescriptorSets(vulkanBase->device, 1, &descriptorWrite, 0, nullptr);
+    VkDescriptorImageInfo imgInfo = {};
+    imgInfo.imageView = tex.texView;
+    imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imgInfo.sampler = sampler;
+
+    VkWriteDescriptorSet descriptorWrite[2] = {};
+    descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite[0].dstSet = descSet;
+    descriptorWrite[0].dstBinding = 0;
+    descriptorWrite[0].dstArrayElement = 0;
+    descriptorWrite[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite[0].descriptorCount = 1;
+    descriptorWrite[0].pBufferInfo = &bufferInfo;
+
+    descriptorWrite[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite[1].dstSet = descSet;
+    descriptorWrite[1].dstBinding = 1;
+    descriptorWrite[1].dstArrayElement = 0;
+    descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrite[1].descriptorCount = 1;
+    descriptorWrite[1].pImageInfo = &imgInfo;
+    vkUpdateDescriptorSets(vulkanBase->device, 2, descriptorWrite, 0, nullptr);
 
     bufferInfo.buffer = uboBuffer2;
-    descriptorWrite.dstSet = descSet2;
-    vkUpdateDescriptorSets(vulkanBase->device, 1, &descriptorWrite, 0, nullptr);
+    descriptorWrite[0].dstSet = descSet2;
+    descriptorWrite[1].dstSet = descSet2;
+    vkUpdateDescriptorSets(vulkanBase->device, 2, descriptorWrite, 0, nullptr);
 }
 
-void VulkanRenderer::prepareTexture()
+void VulkanRenderer::CreateSampler()
+{
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(vulkanBase->physicalDevice, &properties);
+
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+    CHECK_VK_RESULT(vkCreateSampler(vulkanBase->device, &samplerInfo, nullptr, &sampler));
+}
+
+void VulkanRenderer::PrepareTexture()
 {
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingBufferMem;
@@ -615,6 +663,10 @@ void VulkanRenderer::prepareTexture()
     submitInfo.pCommandBuffers = &vulkanBase->cmdBuffer;
     vkQueueSubmit(vulkanBase->graphicsQueue, 1, &submitInfo, nullptr);
     CHECK_VK_RESULT(vkQueueWaitIdle(vulkanBase->graphicsQueue));
+
+    vkDestroyBuffer(vulkanBase->device, stagingBuffer, nullptr);
+    vkFreeMemory(vulkanBase->device, stagingBufferMem, nullptr);
+
 }
 
 std::vector<char> VulkanRenderer::readFile(const std::string& filename)

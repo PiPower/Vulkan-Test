@@ -183,7 +183,7 @@ VkPhysicalDevice pickPhysicalDevice(VkInstance instance)
 		vkGetPhysicalDeviceProperties(dev, &props);
 		vkGetPhysicalDeviceFeatures(dev, &features);
 
-		if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && features.shaderFloat64)
+		if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && features.shaderFloat64 && features.samplerAnisotropy)
 		{
 			return dev;
 		}
@@ -286,7 +286,8 @@ VkDevice createLogicalDevice(VkPhysicalDevice physicalDev, QueuesIdx queuesIdx)
 	}
 
 	VkPhysicalDeviceFeatures features = {};
-	
+	features.samplerAnisotropy = VK_TRUE;
+
 	VkDeviceCreateInfo info = {};
 	info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	info.pQueueCreateInfos = queueInfos;
