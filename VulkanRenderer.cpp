@@ -16,14 +16,15 @@ struct Vertex
 {
     glm::vec3 pos;
     glm::vec3 color;
+    glm::vec2 tex;
 };
 
 const std::vector<Vertex> vertices = {
     // front face
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}},
-    {{0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}},
-    {{-0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
     // right face
     {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
     {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
@@ -343,7 +344,7 @@ void VulkanRenderer::CreateGraphicsPipeline()
     vertBind.stride = sizeof(Vertex);
     vertBind.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    VkVertexInputAttributeDescription vertAttr[2] = {};
+    VkVertexInputAttributeDescription vertAttr[3] = {};
     vertAttr[0].binding = 0;
     vertAttr[0].location = 0;
     vertAttr[0].format = VK_FORMAT_R32G32B32_SFLOAT;
@@ -354,11 +355,16 @@ void VulkanRenderer::CreateGraphicsPipeline()
     vertAttr[1].format = VK_FORMAT_R32G32B32_SFLOAT;
     vertAttr[1].offset = offsetof(Vertex, color);
 
+    vertAttr[2].binding = 0;
+    vertAttr[2].location = 2;
+    vertAttr[2].format = VK_FORMAT_R32G32_SFLOAT;
+    vertAttr[2].offset = offsetof(Vertex, tex);
+
     VkPipelineVertexInputStateCreateInfo inputStateInfo = {};
     inputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     inputStateInfo.vertexBindingDescriptionCount = 1;
     inputStateInfo.pVertexBindingDescriptions = &vertBind;
-    inputStateInfo.vertexAttributeDescriptionCount = 2;
+    inputStateInfo.vertexAttributeDescriptionCount = 3;
     inputStateInfo.pVertexAttributeDescriptions = vertAttr;
 
     VkPipelineInputAssemblyStateCreateInfo inputAss = {};
@@ -573,10 +579,18 @@ void VulkanRenderer::PrepareTexture()
     VkDeviceMemory stagingBufferMem;
     void* stagingPtr;
     ImageFile texImage(L"texture.png");
+
+    unsigned int* ptr = texImage.GetFilePtr();
+    unsigned int sd = * ptr;
+    for (int i = 0; i < texImage.GetWidth(); i++)
+    {
+        //*ptr = 0xFF'2c'58'8e;
+        //ptr++;
+        //break;
+    }
+
     tex = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice, texImage.GetWidth(), texImage.GetHeight(), VK_FORMAT_R8G8B8A8_UNORM);
     
-
-
     VkBufferCreateInfo buffInfo = {};
     buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffInfo.size = texImage.GetWidth() *  texImage.GetHeight() * 4;
@@ -600,7 +614,6 @@ void VulkanRenderer::PrepareTexture()
     cmdBuffInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkResetCommandBuffer(vulkanBase->cmdBuffer, 0);
     vkBeginCommandBuffer(vulkanBase->cmdBuffer, &cmdBuffInfo);
-
 
     VkImageMemoryBarrier copyBarrier = {};
     copyBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
