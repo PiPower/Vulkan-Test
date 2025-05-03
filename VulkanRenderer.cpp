@@ -217,11 +217,11 @@ void VulkanRenderer::updateRotation()
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
     ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)) * ubo.model;
-    ubo.view = glm::lookAtLH(glm::vec3(0.5f, 0.0f, -4.0f), glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.view = glm::lookAtLH(glm::vec3(4.0f, 2.0f, -4.0f), glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
     ubo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 20.0f);
     ubo.proj[1][1] *= -1;
     ubo.lightPos = glm::vec4(0.0f, 0.0f, -4.0f, 0.0f);
     ubo.lightCol = glm::vec4(0.7f, 0.7f, 0.4f, 0.47f);

@@ -9,8 +9,8 @@ layout(location = 3) in vec2 texCoord;
 layout(location = 0) out vec4 outColor;
 
 void main() {
+    vec4 texCol = texture(texSampler, texCoord);
     vec3 colorScalling = lightColIn.w *  lightColIn.xyz;
-    vec3 objColor = fragColor * colorScalling;
+    outColor = texCol * vec4(colorScalling, 1.0f);
     //outColor = vec4(objColor, 1.0);
-    outColor = texture(texSampler, texCoord);
 }
