@@ -23,35 +23,35 @@ struct Vertex
 
 const std::vector<Vertex> vertices = {
     // front face
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.69f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, -0.5f,  -0.5f}, {1.0f, 1.0f, 1.0f}, {0.69f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {0, 0, -1.0f}, {0.69f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f},  {0, 0, -1.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f,  -0.5f},  {0, 0, -1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, -0.5f,  -0.5f},  {0, 0, -1.0f}, {0.69f, 1.0f}},
     // right face
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
-    {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
-    {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 1.0f}},
+    {{0.5f, 0.5f, -0.5f}, {1.0f, 0, 0}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.5f}, {1.0f, 0, 0}, {0.33f, 0.0f}},
+    {{0.5f, -0.5f, 0.5f}, {1.0f, 0, 0}, {0.33f, 1.0f}},
+    {{0.5f, -0.5f, -0.5f}, {1.0f, 0, 0}, {0.0f, 1.0f}},
     // left face
-    {{-0.5f, 0.5f,  -0.5f}, {1.0f, 1.0f, 0.0f}},
-    {{-0.5f, 0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}},
-    {{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 0.0f}},
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f,  -0.5f}, {-1.0f, 0, 0}},
+    {{-0.5f, 0.5f, 0.5f}, {-1.0f, 0, 0}},
+    {{-0.5f, -0.5f, 0.5f}, {-1.0f, 0, 0}},
+    {{-0.5f, -0.5f, -0.5f}, {-1.0f, 0, 0}},
     // back face
-    {{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, 0.5f, 0.5f},  {0, 0, 1.0f}},
+    {{0.5f, 0.5f, 0.5f}, {0, 0, 1.0f}},
+    {{0.5f, -0.5f, 0.5f}, {0, 0, 1.0f}},
+    {{-0.5f, -0.5f, 0.5f}, {0, 0, 1.0f}},
     // bottom face
-    {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{-0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
+    {{-0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, -1.0f, 0.0f}},
+    {{-0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.5f}, {0.0f, -1.0f, 0.0f}},
     // top face
-    {{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-    {{0.5f, 0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f},  {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.5f},{0.0f, 1.0f, 0.0f}, {0.33f, 0.0f}},
+    {{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, {0.33f, 1.0f}},
 
 };
 
@@ -212,10 +212,10 @@ void VulkanRenderer::Render()
 void VulkanRenderer::updateRotation()
 {
     UniformBufferObject ubo = {};
-    angle = 0;
+    angle += 0.0001;
 // first box
     ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
+    ubo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
     ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)) * ubo.model;
     ubo.view = glm::lookAtLH(glm::vec3(4.0f, 2.0f, -4.0f), glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
@@ -223,12 +223,12 @@ void VulkanRenderer::updateRotation()
     ubo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 20.0f);
     ubo.proj[1][1] *= -1;
-    ubo.lightPos = glm::vec4(0.0f, 0.0f, -4.0f, 0.0f);
-    ubo.lightCol = glm::vec4(0.7f, 0.7f, 0.4f, 0.47f);
+    ubo.lightPos = glm::vec4(6.0f, 2.0f, -4.0f, 0.0f);
+    ubo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
     memcpy(uboData, &ubo, sizeof(UniformBufferObject));
 
     ubo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
+    ubo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * ubo.model;
     ubo.model = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 6.0f)) * ubo.model;
     memcpy((char*)uboData + sizeof(UniformBufferObject), &ubo, sizeof(UniformBufferObject));
 }
@@ -469,7 +469,7 @@ void VulkanRenderer::CreatePipelineLayout()
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     bindings[0].descriptorCount = 1;
-    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings[0].pImmutableSamplers = nullptr;
 
     bindings[1].binding = 1;
@@ -581,15 +581,6 @@ void VulkanRenderer::PrepareTexture()
     VkDeviceMemory stagingBufferMem;
     void* stagingPtr;
     ImageFile texImage(L"texture.png");
-
-    unsigned int* ptr = texImage.GetFilePtr();
-    unsigned int sd = * ptr;
-    for (int i = 0; i < texImage.GetWidth() * texImage.GetHeight(); i++)
-    {
-        *ptr &= 0xFF'FF'FF'FF;
-        ptr++;
-        //break;
-    }
 
     tex = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice, texImage.GetWidth(), texImage.GetHeight(), TEXTURE_FORMAT);
     
