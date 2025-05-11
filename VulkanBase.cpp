@@ -103,6 +103,7 @@ VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd)
 	vulkanBase->surface = createSurface(vulkanBase->instance, hinstance, hwnd);
 	vulkanBase->queueFamilies = createQueueIndecies(vulkanBase->instance, vulkanBase->physicalDevice, vulkanBase->surface);
 	vulkanBase->device = createLogicalDevice(vulkanBase->physicalDevice, vulkanBase->queueFamilies);
+
 	vkGetDeviceQueue(vulkanBase->device, vulkanBase->queueFamilies.grahicsIdx, 0, &vulkanBase->graphicsQueue);
 	vkGetDeviceQueue(vulkanBase->device, vulkanBase->queueFamilies.presentationIdx, 0, &vulkanBase->presentationQueue);
 	vulkanBase->swapchainInfo = querySwapChainSupport(vulkanBase->physicalDevice, vulkanBase->surface);

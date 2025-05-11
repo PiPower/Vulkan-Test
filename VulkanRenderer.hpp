@@ -4,6 +4,18 @@
 #include "VulkanOps.hpp"
 #include <string>
 
+struct GeometryCollection
+{
+	VkBuffer vertexBuffer;
+	VkDeviceMemory vbDevMem;
+	VkBuffer indexBuffer;
+	VkDeviceMemory ibDevMem;
+	std::vector<uint32_t> vbOffset;
+	std::vector<uint32_t> ibOffset;
+	std::vector<uint32_t> indexCount;
+
+};
+
 class VulkanRenderer
 {
 public:
@@ -22,12 +34,7 @@ private:
 	void PrepareTexture();
 	static std::vector<char> readFile(const std::string& filename);
 private:
-	VkBuffer vertexBuffer;
-	VkDeviceMemory vbDevMem;
-	VkBuffer indexBuffer;
-	VkDeviceMemory ibDevMem;
-	VkBuffer stagingBuffer;
-	VkDeviceMemory stDevMem;
+	GeometryCollection geometry;
 	VkBuffer uboBuffer;
 	VkBuffer uboBuffer2;
 	VkDeviceMemory uboDevMem;

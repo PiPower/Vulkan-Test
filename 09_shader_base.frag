@@ -28,5 +28,4 @@ void main()
     vec4 texCol = texture(texSampler, texCoord);
     vec3 ambient =  ubo.lightCol.w *  ubo.lightCol.xyz;
     outColor = texCol * vec4(ambient + diffuse, 1.0f);
-    //outColor = vec4(objColor, 1.0);
 }

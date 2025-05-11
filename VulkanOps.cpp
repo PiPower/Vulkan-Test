@@ -16,13 +16,12 @@ static std::vector<char> readFile(const std::string& filename)
     }
 
     size_t fileSize = (size_t)file.tellg();
-    vector<char> buffer(fileSize);
+    vector<char> buffer(fileSize + 1);
 
     file.seekg(0);
     file.read(buffer.data(), fileSize);
-
     file.close();
-
+    buffer[fileSize] = '\0';
     return buffer;
 
 }
@@ -98,13 +97,14 @@ VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
 {
 	std::vector<char> shaderSrc = readFile(path);
     size_t fileNameOffset = strlen(path) - 1;
+
     while ( path[fileNameOffset] != '\\'  && path[fileNameOffset] != '/'  && fileNameOffset != 0)
     {
         fileNameOffset--;
     }
 
 	shaderc_compilation_result_t result = shaderc_compile_into_spv(
-		shaderCompiler, shaderSrc.data(), shaderSrc.size(),
+		shaderCompiler, shaderSrc.data(), shaderSrc.size() - 1,
         shaderKind, path + fileNameOffset, entryName, nullptr);
 
     shaderc_compilation_status errCount = shaderc_result_get_compilation_status(result);

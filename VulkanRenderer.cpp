@@ -121,6 +121,9 @@ GLM_FUNC_QUALIFIER glm::mat<4, 4, T, Q> lookAtRH23(glm::vec<3, T, Q> const& eye,
 VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd)
 {
     vulkanBase = createVulkanBase(hinstance, hwnd);
+    geometry.vbOffset = { 0 };
+    geometry.ibOffset = { 0 };;
+    geometry.indexCount = { (uint32_t)indices.size() };
     CreateVertexBuffer();
     CreateIndexBuffer();
     CreateUbo();
@@ -175,14 +178,14 @@ void VulkanRenderer::Render()
     vkCmdSetScissor(vulkanBase->cmdBuffer, 0, 1, &scissor);
 
     VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &vertexBuffer, offsets);
-    vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &geometry.vertexBuffer, offsets);
+    vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, geometry.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
     vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 0, nullptr);
-    vkCmdDrawIndexed(vulkanBase->cmdBuffer, indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
 
     vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet2, 0, nullptr);
-    vkCmdDrawIndexed(vulkanBase->cmdBuffer, indices.size(), 1, 0, 0, 0);
+    vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
 
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
     vkEndCommandBuffer(vulkanBase->cmdBuffer);
@@ -245,18 +248,18 @@ void VulkanRenderer::CreateVertexBuffer()
     buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &vertexBuffer);
+    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &geometry.vertexBuffer);
 
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(vulkanBase->device, vertexBuffer, &memRequirements);
-    vbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    vkBindBufferMemory(vulkanBase->device, vertexBuffer, vbDevMem, 0);
+    vkGetBufferMemoryRequirements(vulkanBase->device, geometry.vertexBuffer, &memRequirements);
+    geometry.vbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    vkBindBufferMemory(vulkanBase->device, geometry.vertexBuffer, geometry.vbDevMem, 0);
 
 
     void* data;
-    vkMapMemory(vulkanBase->device, vbDevMem, 0, buffInfo.size, 0, &data);
+    vkMapMemory(vulkanBase->device, geometry.vbDevMem, 0, buffInfo.size, 0, &data);
     memcpy(data, vertices.data(), (size_t)buffInfo.size);
-    vkUnmapMemory(vulkanBase->device, vbDevMem);
+    vkUnmapMemory(vulkanBase->device, geometry.vbDevMem);
 }
 
 void VulkanRenderer::CreateIndexBuffer()
@@ -267,18 +270,18 @@ void VulkanRenderer::CreateIndexBuffer()
     buffInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
     buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &indexBuffer);
+    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &geometry.indexBuffer);
 
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(vulkanBase->device, indexBuffer, &memRequirements);
-    ibDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    vkGetBufferMemoryRequirements(vulkanBase->device, geometry.indexBuffer, &memRequirements);
+    geometry.ibDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-    vkBindBufferMemory(vulkanBase->device, indexBuffer, ibDevMem, 0);
+    vkBindBufferMemory(vulkanBase->device, geometry.indexBuffer, geometry.ibDevMem, 0);
 
     void* data;
-    vkMapMemory(vulkanBase->device, ibDevMem, 0, buffInfo.size, 0, &data);
+    vkMapMemory(vulkanBase->device, geometry.ibDevMem, 0, buffInfo.size, 0, &data);
     memcpy(data, indices.data(), buffInfo.size);
-    vkUnmapMemory(vulkanBase->device, ibDevMem);
+    vkUnmapMemory(vulkanBase->device, geometry.ibDevMem);
 }
 
 void VulkanRenderer::CreateUbo()
