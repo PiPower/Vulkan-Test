@@ -1,13 +1,17 @@
 #version 450
 
-layout(binding = 0) uniform UniformBufferObject {
-    mat4 model;
+layout(binding = 0) uniform GlobalUbo
+{
     mat4 view;
     mat4 proj;
     vec4 lightPos;
     vec4 lightCol;
-} ubo;
+} globalUbo;
 
+layout(binding = 2) uniform  PerObjUbo
+{
+    mat4 model;
+} localUbo;
 
 layout(binding = 1) uniform sampler2D texSampler;
 
@@ -21,11 +25,11 @@ void main()
 {
 
     vec3 norm = normalize(faceNormal);
-    vec3 lightDir = normalize(ubo.lightPos.xyz - worldPos.xyz);
+    vec3 lightDir = normalize(globalUbo.lightPos.xyz - worldPos.xyz);
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * ubo.lightCol.xyz;
+    vec3 diffuse = diff * globalUbo.lightCol.xyz;
 
     vec4 texCol = texture(texSampler, texCoord);
-    vec3 ambient =  ubo.lightCol.w *  ubo.lightCol.xyz;
+    vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
     outColor = texCol * vec4(ambient + diffuse, 1.0f);
 }

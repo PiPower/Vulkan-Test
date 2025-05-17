@@ -35,15 +35,17 @@ private:
 	static std::vector<char> readFile(const std::string& filename);
 private:
 	GeometryCollection geometry;
-	VkBuffer uboBuffer;
-	VkBuffer uboBuffer2;
+	VkBuffer uboGlobal;
+	VkBuffer uboPerObj;
+	BufferMemoryProperties uboGlobalProps;
+	BufferMemoryProperties uboPerObjProps;
+
 	VkDeviceMemory uboDevMem;
 	void* uboData;
 	float angle = 0.0f;
 
 	VkDescriptorPool descPool;
 	VkDescriptorSet descSet;
-	VkDescriptorSet descSet2;
 	VkDescriptorSetLayout descSetLayout;
 
 	VkPipeline pipeline;

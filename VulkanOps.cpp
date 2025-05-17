@@ -126,4 +126,83 @@ VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
     return compiledModule;
 }
 
+UniformBuffer createUniformBuffer(VkDevice device, VkPhysicalDevice physicalDevice, VkDeviceSize buffSize, 
+                                    std::vector<VkDeviceSize> offsets, std::vector<VkDeviceSize> chunkLenghts)
+{
+    if (offsets.size() != chunkLenghts.size())
+    {
+        OutputDebugString(L"Error: offsets.size() != chunkLenghts.size()\n");
+        exit(-1);
+    }
+
+    UniformBuffer out = {};
+    VkBufferCreateInfo buffInfo = {};
+    buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffInfo.size = buffSize;
+    buffInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    CHECK_VK_RESULT( vkCreateBuffer(device, &buffInfo, nullptr, &out.globalBuffer));
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(device, out.globalBuffer, &memRequirements);
+
+    VkPhysicalDeviceMemoryProperties memProperties;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+    uint32_t i;
+    VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+    for (i = 0; i < memProperties.memoryTypeCount; i++)
+    {
+        if ((memRequirements.memoryTypeBits & (1 << i)) &&
+            (memProperties.memoryTypes[i].propertyFlags & props) == props) {
+            break;
+        }
+    }
+
+    VkMemoryAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = i;
+
+    CHECK_VK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &out.buffMem));
+    CHECK_VK_RESULT(vkBindBufferMemory(device, out.globalBuffer, out.buffMem, 0));
+
+    for (size_t i = 0; i < offsets.size(); i++)
+    {
+        out.subBuffers.push_back(VK_NULL_HANDLE);
+
+        VkBufferCreateInfo buffInfo = {};
+        buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffInfo.size = chunkLenghts[i];
+        buffInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+        CHECK_VK_RESULT(vkCreateBuffer(device, &buffInfo, nullptr, &out.subBuffers[i]));
+        CHECK_VK_RESULT(vkBindBufferMemory(device, out.subBuffers[i], out.buffMem, offsets[i]));
+    }
+
+    return out;
+}
+
+BufferMemoryProperties getBufferMemoryProperties(VkDevice device, VkDeviceSize buffSize, VkBufferUsageFlags usage)
+{
+    BufferMemoryProperties out = {};
+
+    VkBuffer tmpBuffer;
+    VkBufferCreateInfo buffInfo = {};
+    buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffInfo.size = buffSize;
+    buffInfo.usage = usage;
+    buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    vkCreateBuffer(device, &buffInfo, nullptr, &tmpBuffer);
+
+    VkMemoryRequirements memReqs = {};
+    vkGetBufferMemoryRequirements(device, tmpBuffer, &memReqs);
+    out.alignment = memReqs.alignment;
+    out.size = memReqs.size;
+
+    vkDestroyBuffer(device, tmpBuffer, nullptr);
+    return out;
+}
+
 
