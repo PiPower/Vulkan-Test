@@ -1,6 +1,8 @@
 #pragma once
 
 #include "VulkanBase.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 #include "VulkanOps.hpp"
 #include <string>
 
@@ -22,6 +24,7 @@ public:
 	VulkanRenderer(HINSTANCE hinstance, HWND hwnd);
 	void Render();
 	void updateRotation();
+	void updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up);
 	~VulkanRenderer();
 private:
 	void CreateVertexBuffer();

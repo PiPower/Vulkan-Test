@@ -87,6 +87,8 @@ public:
 	bool IsMiddlePressed() noexcept;
 	int GetMousePosX() noexcept;
 	int GetMousePosY() noexcept;
+	int GetMouseDeltaX() noexcept;
+	int GetMouseDeltaY() noexcept;
 	float GetMousePosXNormalized() noexcept;
 	float GetMousePosYNormalized() noexcept;
 	bool IsMouseEventEmpty();
@@ -116,6 +118,8 @@ private:
 	int ScrollDelta;
 	int PosX;
 	int PosY;
+	int deltaX;
+	int deltaY;
 	std::queue<MouseEvent> MouseQueue;
 	// Graphics ------------------------------------
 	std::wstring fpsInfo;

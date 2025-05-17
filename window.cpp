@@ -59,9 +59,10 @@ int Window::ProcessMessages() noexcept
 		fpsTick = 0;
 	}
 	fpsTick++;
+	deltaX = 0;
+	deltaY = 0;
 	while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 	{
-
 		if (msg.message == WM_QUIT)
 		{
 			return msg.wParam;
@@ -177,6 +178,16 @@ int Window::GetMousePosX() noexcept
 int Window::GetMousePosY() noexcept
 {
 	return PosY;
+}
+
+int Window::GetMouseDeltaX() noexcept
+{
+	return deltaX;
+}
+
+int Window::GetMouseDeltaY() noexcept
+{
+	return deltaY;
 }
 
 float Window::GetMousePosXNormalized() noexcept
@@ -321,6 +332,8 @@ LRESULT Window::HandleMsg(UINT msg, WPARAM wParam, LPARAM lParam)
 		if (MouseQueue.size() > QueueLimit)MouseQueue.pop();
 		break;
 	case WM_MOUSEMOVE:
+		deltaX = PosX - GET_X_LPARAM(lParam);
+		deltaY = -(PosY - GET_Y_LPARAM(lParam));
 		PosX = GET_X_LPARAM(lParam);
 		PosY = GET_Y_LPARAM(lParam);
 		MouseQueue.emplace(PosX, PosY, MouseEvent::Event::Move);

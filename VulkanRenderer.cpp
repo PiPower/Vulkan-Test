@@ -7,8 +7,6 @@
 #include "VulkanOps.hpp"
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <fstream>
 #include "ImageFile.h"
 #define TEXTURE_FORMAT VK_FORMAT_R8G8B8A8_SRGB
@@ -222,17 +220,6 @@ void VulkanRenderer::Render()
 void VulkanRenderer::updateRotation()
 {
     
-    GlobalUbo globalUbo = {};
-
-    globalUbo.view = glm::lookAtLH(glm::vec3(4.0f, 2.0f, -4.0f), glm::vec3(0.0f, 0.0f, 4.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    globalUbo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
-    globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 20.0f);
-    globalUbo.proj[1][1] *= -1;
-    globalUbo.lightPos = glm::vec4(6.0f, 2.0f, -4.0f, 0.0f);
-    globalUbo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
-    memcpy(uboData, &globalUbo, sizeof(GlobalUbo));
     
     PerObjUbo perObjUbo = {};
     angle += 0.0001;
@@ -241,13 +228,28 @@ void VulkanRenderer::updateRotation()
     perObjUbo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * perObjUbo.model;
     perObjUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)) * perObjUbo.model;
     memcpy((char*)uboData + uboGlobalProps.size, &perObjUbo, sizeof(PerObjUbo));
-
+    // second box
     perObjUbo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
     perObjUbo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * perObjUbo.model;
     perObjUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 6.0f)) * perObjUbo.model;
     memcpy((char*)uboData + uboGlobalProps.size + uboPerObjProps.size, &perObjUbo, sizeof(PerObjUbo));
 
   
+}
+
+void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up)
+{
+    GlobalUbo globalUbo = {};
+
+    globalUbo.view = glm::lookAtLH(eye, center, up);
+    globalUbo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+    globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 20.0f);
+    globalUbo.proj[1][1] *= -1;
+    globalUbo.lightPos = glm::vec4(6.0f, 2.0f, -4.0f, 0.0f);
+    globalUbo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
+    memcpy(uboData, &globalUbo, sizeof(GlobalUbo));
 }
 
 VulkanRenderer::~VulkanRenderer()
