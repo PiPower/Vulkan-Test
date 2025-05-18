@@ -40,11 +40,11 @@ void updatePosition(Window* window, glm::vec3* eye, glm::vec3* center, glm::vec3
 
         if (window->GetMouseDeltaY() < 0)
         {
-            angleX += 0.005f  *  (abs(angleX) > 3.14f/2.0f ? -1.0f : 1.0f );
+            angleX += 0.005f;
         }
         else if (window->GetMouseDeltaY() > 0)
         {
-            angleX -= 0.005f * (abs(angleX) > 3.14f / 2.0f ? -1.0f : 1.0f);
+            angleX -= 0.005f;
         }
         // IMPORTANT: Order MATTERS !!!!
         glm::mat4 rot = glm::rotate(glm::mat4(1.0f), angleX, glm::vec3(1.0f, 0.0f, 0.0f)) *
