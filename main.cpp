@@ -31,24 +31,24 @@ void updatePosition(Window* window, glm::vec3* eye, glm::vec3* center, glm::vec3
     {
         if (window->GetMouseDeltaX() < 0)
         {
-            angleX -= 0.005f;
+            angleY -= 0.005f;
         }
         else if (window->GetMouseDeltaX() > 0)
         {
-            angleX += 0.005f;
+            angleY += 0.005f;
         }
 
         if (window->GetMouseDeltaY() < 0)
         {
-            angleY += 0.005f;
+            angleX += 0.005f  *  (abs(angleX) > 3.14f/2.0f ? -1.0f : 1.0f );
         }
         else if (window->GetMouseDeltaY() > 0)
         {
-            angleY -= 0.005f;
+            angleX -= 0.005f * (abs(angleX) > 3.14f / 2.0f ? -1.0f : 1.0f);
         }
         // IMPORTANT: Order MATTERS !!!!
-        glm::mat4 rot = glm::rotate(glm::mat4(1.0f), angleY, glm::vec3(1.0f, 0.0f, 0.0f)) *
-                        glm::rotate(glm::mat4(1.0f), angleX, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 rot = glm::rotate(glm::mat4(1.0f), angleX, glm::vec3(1.0f, 0.0f, 0.0f)) *
+                        glm::rotate(glm::mat4(1.0f), angleY, glm::vec3(0.0f, 1.0f, 0.0f));
 
         glm::vec4 pos(0.0f, 0.0f, 1.0f, 0.0f);
         pos = pos * rot;
