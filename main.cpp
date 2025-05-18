@@ -20,36 +20,39 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
 void updatePosition(Window* window, glm::vec3* eye, glm::vec3* center, glm::vec3* up, glm::vec3* centerDir)
 {
-
+    static float angleX = 0.0f, angleY =0.0f;
     if (window->IsKeyPressed('W')) { *eye += 0.0007f * (*centerDir); }
     if (window->IsKeyPressed('S')) { *eye -= 0.0007f * (*centerDir); }
-    if (window->IsKeyPressed('D'))
-    {
-        *eye += 0.0007f * glm::cross(*up, *centerDir);
-        *center = *eye + *centerDir;
-    }
-    if (window->IsKeyPressed('A')) 
-    { 
-        *eye -= 0.0007f * glm::cross(*up, *centerDir);
-        *center = *eye + *centerDir;
-    }
+    if (window->IsKeyPressed(VK_SPACE)) { *eye += 0.0007f * (*up); }
+    if (window->IsKeyPressed(VK_CONTROL)) { *eye -= 0.0007f * (*up); }
+    if (window->IsKeyPressed('D')){ *eye += 0.0007f * glm::cross(*up, *centerDir);}
+    if (window->IsKeyPressed('A')){ *eye -= 0.0007f * glm::cross(*up, *centerDir); }
     if (window->IsLeftPressed())
     {
-        glm::mat4 rot = glm::mat4(1.0f);
-        
         if (window->GetMouseDeltaX() < 0)
         {
-            rot = glm::rotate(glm::mat4(1.0f), -0.005f, glm::vec3(0.0f, 1.0f, 0.0f));
+            angleX -= 0.005f;
         }
         else if (window->GetMouseDeltaX() > 0)
         {
-            rot = glm::rotate(glm::mat4(1.0f), 0.005f, glm::vec3(0.0f, 1.0f, 0.0f));
+            angleX += 0.005f;
         }
 
-        glm::vec4 pos(*centerDir, 0.0f);
+        if (window->GetMouseDeltaY() < 0)
+        {
+            angleY += 0.005f;
+        }
+        else if (window->GetMouseDeltaY() > 0)
+        {
+            angleY -= 0.005f;
+        }
+        // IMPORTANT: Order MATTERS !!!!
+        glm::mat4 rot = glm::rotate(glm::mat4(1.0f), angleY, glm::vec3(1.0f, 0.0f, 0.0f)) *
+                        glm::rotate(glm::mat4(1.0f), angleX, glm::vec3(0.0f, 1.0f, 0.0f));
+
+        glm::vec4 pos(0.0f, 0.0f, 1.0f, 0.0f);
         pos = pos * rot;
         *centerDir = glm::vec3(pos);
-        *center = *eye + *centerDir;
     }
-
+    *center = *eye + *centerDir;
 }
