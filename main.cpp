@@ -8,10 +8,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     VulkanRenderer* renderer = new VulkanRenderer(hInstance, wnd->GetWindowHWND());
     glm::vec3 eye{ 0.0f, 0.0f, 0.0f }, centerDir{ 0.0f, 0.0f, 1.0f }, up{ 0.0f, 1.0f, 0.0f };
     glm::vec3 center = eye + centerDir;
+    renderer->updateRotation();
     while (wnd->ProcessMessages() == 0)
     {
         renderer->updateCameraLH(eye, center, up);
-        renderer->updateRotation();
         renderer->Render();
         updatePosition(wnd, &eye, &center, &up, &centerDir);
     }
@@ -21,12 +21,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 void updatePosition(Window* window, glm::vec3* eye, glm::vec3* center, glm::vec3* up, glm::vec3* centerDir)
 {
     static float angleX = 0.0f, angleY =0.0f;
-    if (window->IsKeyPressed('W')) { *eye += 0.0007f * (*centerDir); }
-    if (window->IsKeyPressed('S')) { *eye -= 0.0007f * (*centerDir); }
-    if (window->IsKeyPressed(VK_SPACE)) { *eye += 0.0007f * (*up); }
-    if (window->IsKeyPressed(VK_CONTROL)) { *eye -= 0.0007f * (*up); }
-    if (window->IsKeyPressed('D')){ *eye += 0.0007f * glm::cross(*up, *centerDir);}
-    if (window->IsKeyPressed('A')){ *eye -= 0.0007f * glm::cross(*up, *centerDir); }
+    if (window->IsKeyPressed('W')) { *eye += 0.001f * (*centerDir); }
+    if (window->IsKeyPressed('S')) { *eye -= 0.001f * (*centerDir); }
+    if (window->IsKeyPressed(VK_SPACE)) { *eye += 0.001f * (*up); }
+    if (window->IsKeyPressed(VK_CONTROL)) { *eye -= 0.001f * (*up); }
+    if (window->IsKeyPressed('D')){ *eye += 0.001f * glm::cross(*up, *centerDir);}
+    if (window->IsKeyPressed('A')){ *eye -= 0.001f * glm::cross(*up, *centerDir); }
     if (window->IsLeftPressed())
     {
         if (window->GetMouseDeltaX() < 0)

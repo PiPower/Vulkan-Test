@@ -185,12 +185,13 @@ void VulkanRenderer::Render()
     vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, geometry.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
     uint32_t dynamicOffsetCount[1] = {0};
-    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
-    vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
+    for (int i = 0; i < SQUARE_COUNT; i++)
+    {
+        dynamicOffsetCount[0] = (uint32_t)uboPerObjProps.size * i;
+        vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
+        vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
+    }
 
-    dynamicOffsetCount[0] = (uint32_t) uboPerObjProps.size;
-    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
-    vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
 
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
     vkEndCommandBuffer(vulkanBase->cmdBuffer);
@@ -219,22 +220,26 @@ void VulkanRenderer::Render()
 
 void VulkanRenderer::updateRotation()
 {
-    
-    
-    PerObjUbo perObjUbo = {};
     angle += 0.0001;
     // first box
-    perObjUbo.model = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(0.0f, 1.0f, 0.0f));
-    perObjUbo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * perObjUbo.model;
-    perObjUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 3.0f)) * perObjUbo.model;
-    memcpy((char*)uboData + uboGlobalProps.size, &perObjUbo, sizeof(PerObjUbo));
-    // second box
-    perObjUbo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
-    perObjUbo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * perObjUbo.model;
-    perObjUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(1.0f, 0.0f, 6.0f)) * perObjUbo.model;
-    memcpy((char*)uboData + uboGlobalProps.size + uboPerObjProps.size, &perObjUbo, sizeof(PerObjUbo));
+    for (int z = 0; z < SQUARE_COUNT_Z; z++)
+    {
+        for (int y = 0; y < SQUARE_COUNT_Y; y++)
+        {
+            for (int x = 0; x < SQUARE_COUNT_X; x++)
+            {
+                PerObjUbo perObjUbo = {};
+                perObjUbo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
+                perObjUbo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * perObjUbo.model;
+                perObjUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-2 * SQUARE_COUNT_X + 4.0f * x, -2 * SQUARE_COUNT_Y + 4.0f * y, -2 * SQUARE_COUNT_Z + 4.0f * z)) * perObjUbo.model;
+                char* objBuffPtr = (char*)uboData + uboGlobalProps.size + (z * SQUARE_COUNT_Y * SQUARE_COUNT_X + y * SQUARE_COUNT_X + x) * uboPerObjProps.size;
+                memcpy(objBuffPtr, &perObjUbo, sizeof(PerObjUbo));
+            }
+        }
+    }
 
-  
+
+
 }
 
 void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up)
@@ -242,10 +247,10 @@ void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& cente
     GlobalUbo globalUbo = {};
 
     globalUbo.view = glm::lookAtLH(eye, center, up);
-    globalUbo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
+    //globalUbo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
+    //    (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
     globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 20.0f);
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 40.0f);
     globalUbo.proj[1][1] *= -1;
     globalUbo.lightPos = glm::vec4(6.0f, 2.0f, -4.0f, 0.0f);
     globalUbo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
@@ -306,10 +311,10 @@ void VulkanRenderer::CreateUbo()
     uboGlobalProps = getBufferMemoryProperties(vulkanBase->device, sizeof(GlobalUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     totalMemorySize += uboGlobalProps.size;
     uboPerObjProps = getBufferMemoryProperties(vulkanBase->device, sizeof(PerObjUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    totalMemorySize += uboPerObjProps.size * 2;
+    totalMemorySize += uboPerObjProps.size * SQUARE_COUNT;
 
     vector<VkDeviceSize> offsets = { 0, uboGlobalProps.size};
-    vector<VkDeviceSize> sizes = { uboGlobalProps.size, uboPerObjProps.size * 2 };
+    vector<VkDeviceSize> sizes = { uboGlobalProps.size, uboPerObjProps.size * SQUARE_COUNT };
     UniformBuffer ubo = createUniformBuffer(vulkanBase->device, vulkanBase->physicalDevice, totalMemorySize, offsets, sizes);
     
     vkDestroyBuffer(vulkanBase->device, ubo.globalBuffer, nullptr);

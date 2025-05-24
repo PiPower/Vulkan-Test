@@ -5,6 +5,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "VulkanOps.hpp"
 #include <string>
+#define SQUARE_COUNT_X 5
+#define SQUARE_COUNT_Z 5
+#define SQUARE_COUNT_Y 5
+#define SQUARE_COUNT  (SQUARE_COUNT_X * SQUARE_COUNT_Z * SQUARE_COUNT_Y)
 
 struct GeometryCollection
 {
