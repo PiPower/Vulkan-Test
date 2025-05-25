@@ -292,30 +292,40 @@ void VulkanRenderer::loadScene(const std::string& path)
         OutputDebugString(L"Scene is too large");
         exit(-1);
     }
+    VkBuffer stagingVB, stagingIB;
+    VkDeviceMemory stagingVbDevMem, stagingIbDevMem;
     VkBufferCreateInfo buffInfoVB = {};
     buffInfoVB.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffInfoVB.size = vertexCount * sizeof(Vertex);
-    buffInfoVB.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    buffInfoVB.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     buffInfoVB.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkCreateBuffer(vulkanBase->device, &buffInfoVB, nullptr, &sceneGeometry.vertexBuffer);
+    vkCreateBuffer(vulkanBase->device, &buffInfoVB, nullptr, &stagingVB);
+
     VkMemoryRequirements memReqs;
     vkGetBufferMemoryRequirements(vulkanBase->device, sceneGeometry.vertexBuffer, &memReqs);
-    sceneGeometry.vbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    sceneGeometry.vbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    stagingVbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     vkBindBufferMemory(vulkanBase->device, sceneGeometry.vertexBuffer, sceneGeometry.vbDevMem, 0);
+    vkBindBufferMemory(vulkanBase->device, stagingVB, stagingVbDevMem, 0);
+
 
     VkBufferCreateInfo buffInfoIB = {};
     buffInfoIB.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffInfoIB.size = indexCount * sizeof(uint32_t);
-    buffInfoIB.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    buffInfoIB.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     buffInfoIB.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkCreateBuffer(vulkanBase->device, &buffInfoIB, nullptr, &sceneGeometry.indexBuffer);
+    vkCreateBuffer(vulkanBase->device, &buffInfoIB, nullptr, &stagingIB);
     vkGetBufferMemoryRequirements(vulkanBase->device, sceneGeometry.indexBuffer, &memReqs);
-    sceneGeometry.ibDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    sceneGeometry.ibDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    stagingIbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    vkBindBufferMemory(vulkanBase->device, stagingIB, stagingIbDevMem, 0);
     vkBindBufferMemory(vulkanBase->device, sceneGeometry.indexBuffer, sceneGeometry.ibDevMem, 0);
-
+    
     char* dataIB, *dataVB;
-    vkMapMemory(vulkanBase->device, sceneGeometry.vbDevMem, 0, buffInfoVB.size, 0, (void**) & dataVB);
-    vkMapMemory(vulkanBase->device, sceneGeometry.ibDevMem, 0, buffInfoIB.size, 0, (void**)&dataIB);
+    vkMapMemory(vulkanBase->device, stagingVbDevMem, 0, buffInfoVB.size, 0, (void**) & dataVB);
+    vkMapMemory(vulkanBase->device, stagingIbDevMem, 0, buffInfoIB.size, 0, (void**)&dataIB);
     uint32_t vertCount = 0;
     for (int i = 0; i < scene->mNumMeshes; i++)
     {
@@ -341,9 +351,40 @@ void VulkanRenderer::loadScene(const std::string& path)
         faceCount += scene->mMeshes[i]->mNumFaces;
     }
 
-    vkUnmapMemory(vulkanBase->device, sceneGeometry.vbDevMem);
-    vkUnmapMemory(vulkanBase->device, sceneGeometry.ibDevMem);
+    vkUnmapMemory(vulkanBase->device, stagingVbDevMem);
+    vkUnmapMemory(vulkanBase->device, stagingIbDevMem);
 
+    VkBufferCopy ibRegion = {}, vbRegion = {};
+    vbRegion.srcOffset = 0;
+    vbRegion.dstOffset = 0;
+    vbRegion.size = buffInfoVB.size;
+
+    ibRegion.srcOffset = 0;
+    ibRegion.dstOffset = 0;
+    ibRegion.size = buffInfoIB.size;
+
+    VkCommandBufferBeginInfo cmdBuffInfo = {};
+    cmdBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBuffInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkResetCommandBuffer(vulkanBase->cmdBuffer, 0);
+    vkBeginCommandBuffer(vulkanBase->cmdBuffer, &cmdBuffInfo);
+
+    vkCmdCopyBuffer(vulkanBase->cmdBuffer, stagingVB, sceneGeometry.vertexBuffer, 1, &vbRegion);
+    vkCmdCopyBuffer(vulkanBase->cmdBuffer, stagingIB, sceneGeometry.indexBuffer, 1, &ibRegion);
+
+    vkEndCommandBuffer(vulkanBase->cmdBuffer);
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &vulkanBase->cmdBuffer;
+    vkQueueSubmit(vulkanBase->graphicsQueue, 1, &submitInfo, nullptr);
+    vkQueueWaitIdle(vulkanBase->graphicsQueue);
+
+    vkDestroyBuffer(vulkanBase->device, stagingVB, nullptr);
+    vkDestroyBuffer(vulkanBase->device, stagingIB, nullptr);
+    vkFreeMemory(vulkanBase->device, stagingVbDevMem, nullptr);
+    vkFreeMemory(vulkanBase->device, stagingIbDevMem, nullptr);
 
     int x = 2;
 }
