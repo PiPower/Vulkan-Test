@@ -29,6 +29,7 @@ public:
 	void Render();
 	void updateRotation();
 	void updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up);
+	void loadScene(const std::string& path);
 	~VulkanRenderer();
 private:
 	void CreateVertexBuffer();
@@ -42,6 +43,7 @@ private:
 	static std::vector<char> readFile(const std::string& filename);
 private:
 	GeometryCollection geometry;
+	GeometryCollection sceneGeometry;
 	VkBuffer uboGlobal;
 	VkBuffer uboPerObj;
 	BufferMemoryProperties uboGlobalProps;

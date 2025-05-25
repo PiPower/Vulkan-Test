@@ -10,6 +10,9 @@
 #include <fstream>
 #include "ImageFile.h"
 #define TEXTURE_FORMAT VK_FORMAT_R8G8B8A8_SRGB
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
 
 using namespace std;
 struct Vertex
@@ -18,6 +21,8 @@ struct Vertex
     glm::vec3 color;
     glm::vec2 tex;
 };
+
+uint32_t faceCount;
 
 const std::vector<Vertex> vertices = {
     // front face
@@ -181,17 +186,22 @@ void VulkanRenderer::Render()
     vkCmdSetScissor(vulkanBase->cmdBuffer, 0, 1, &scissor);
 
     VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &geometry.vertexBuffer, offsets);
-    vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, geometry.indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+    vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &sceneGeometry.vertexBuffer, offsets);
+    vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, sceneGeometry.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    uint32_t dynamicOffsetCount[1] = {0};
+    uint32_t dynamicOffsetCount[1] = { 0 };
+    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
+    //vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
+    vkCmdDrawIndexed(vulkanBase->cmdBuffer,faceCount * 3, 1, 0, 0, 0);
+
+    /*
     for (int i = 0; i < SQUARE_COUNT; i++)
     {
         dynamicOffsetCount[0] = (uint32_t)uboPerObjProps.size * i;
         vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
         vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
     }
-
+    */
 
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
     vkEndCommandBuffer(vulkanBase->cmdBuffer);
@@ -238,8 +248,9 @@ void VulkanRenderer::updateRotation()
         }
     }
 
-
-
+    PerObjUbo perObjUbo = {};
+    perObjUbo.model = glm::mat4(1.0f);
+    memcpy(uboData, &perObjUbo, sizeof(PerObjUbo));
 }
 
 void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up)
@@ -250,16 +261,98 @@ void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& cente
     //globalUbo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
     //    (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
     globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 40.0f);
+        (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 90.0f);
     globalUbo.proj[1][1] *= -1;
     globalUbo.lightPos = glm::vec4(6.0f, 2.0f, -4.0f, 0.0f);
     globalUbo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
     memcpy(uboData, &globalUbo, sizeof(GlobalUbo));
 }
 
+
+void VulkanRenderer::loadScene(const std::string& path)
+{
+    Assimp::Importer importer;
+    const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder);
+    size_t vertexCount = 0;
+    size_t indexCount = 0;
+    for (int i = 0; i < scene->mNumMeshes; i++)
+    {
+        if (scene->mMeshes[i]->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
+        {
+            OutputDebugString(L"Unsupported mesh type");
+            exit(-1);
+        }
+        vertexCount += scene->mMeshes[i]->mNumVertices;
+        indexCount += scene->mMeshes[i]->mNumFaces * 3;
+    }
+
+    if (vertexCount * sizeof(Vertex) > 4'000'000'000 ||
+        indexCount * sizeof(uint32_t) > 4'000'000'000)
+    {
+        OutputDebugString(L"Scene is too large");
+        exit(-1);
+    }
+    VkBufferCreateInfo buffInfoVB = {};
+    buffInfoVB.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffInfoVB.size = vertexCount * sizeof(Vertex);
+    buffInfoVB.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    buffInfoVB.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    vkCreateBuffer(vulkanBase->device, &buffInfoVB, nullptr, &sceneGeometry.vertexBuffer);
+    VkMemoryRequirements memReqs;
+    vkGetBufferMemoryRequirements(vulkanBase->device, sceneGeometry.vertexBuffer, &memReqs);
+    sceneGeometry.vbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    vkBindBufferMemory(vulkanBase->device, sceneGeometry.vertexBuffer, sceneGeometry.vbDevMem, 0);
+
+    VkBufferCreateInfo buffInfoIB = {};
+    buffInfoIB.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffInfoIB.size = indexCount * sizeof(uint32_t);
+    buffInfoIB.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    buffInfoIB.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    vkCreateBuffer(vulkanBase->device, &buffInfoIB, nullptr, &sceneGeometry.indexBuffer);
+    vkGetBufferMemoryRequirements(vulkanBase->device, sceneGeometry.indexBuffer, &memReqs);
+    sceneGeometry.ibDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memReqs, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    vkBindBufferMemory(vulkanBase->device, sceneGeometry.indexBuffer, sceneGeometry.ibDevMem, 0);
+
+    char* dataIB, *dataVB;
+    vkMapMemory(vulkanBase->device, sceneGeometry.vbDevMem, 0, buffInfoVB.size, 0, (void**) & dataVB);
+    vkMapMemory(vulkanBase->device, sceneGeometry.ibDevMem, 0, buffInfoIB.size, 0, (void**)&dataIB);
+    uint32_t vertCount = 0;
+    for (int i = 0; i < scene->mNumMeshes; i++)
+    {
+
+        for (int j = 0; j < scene->mMeshes[i]->mNumVertices; j++)
+        {
+            Vertex vert = {};
+            vert.pos.y = scene->mMeshes[i]->mVertices[j].y;
+            vert.pos.z = scene->mMeshes[i]->mVertices[j].z;
+            vert.pos.x = scene->mMeshes[i]->mVertices[j].x;
+            memcpy(dataVB + vertCount * sizeof(Vertex) + j * sizeof(Vertex), &vert, sizeof(Vertex));
+        }
+
+        for (int j = 0; j < scene->mMeshes[i]->mNumFaces; j++)
+        {
+            uint32_t face[3];
+            face[0] = scene->mMeshes[i]->mFaces[j].mIndices[0] + vertCount;
+            face[1] = scene->mMeshes[i]->mFaces[j].mIndices[1] + vertCount;
+            face[2] = scene->mMeshes[i]->mFaces[j].mIndices[2] + vertCount;
+            memcpy(dataIB + faceCount * 3 * sizeof(uint32_t) + j * sizeof(uint32_t) * 3, face, sizeof(uint32_t) * 3);
+        }
+        vertCount += scene->mMeshes[i]->mNumVertices;
+        faceCount += scene->mMeshes[i]->mNumFaces;
+    }
+
+    vkUnmapMemory(vulkanBase->device, sceneGeometry.vbDevMem);
+    vkUnmapMemory(vulkanBase->device, sceneGeometry.ibDevMem);
+
+
+    int x = 2;
+}
+
 VulkanRenderer::~VulkanRenderer()
 {
+
 }
+
 
 void VulkanRenderer::CreateVertexBuffer()
 {

@@ -24,13 +24,13 @@ layout(location = 0) out vec4 outColor;
 void main()
 {
 
-    vec3 norm = normalize(faceNormal);
-    vec3 lightDir = normalize(globalUbo.lightPos.xyz - worldPos.xyz);
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * globalUbo.lightCol.xyz;
+    //vec3 norm = normalize(faceNormal);
+    //vec3 lightDir = normalize(globalUbo.lightPos.xyz - worldPos.xyz);
+    //float diff = max(dot(norm, lightDir), 0.0);
+   // vec3 diffuse = diff * globalUbo.lightCol.xyz;
 
-    vec4 texCol = texture(texSampler, texCoord);
-    vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
-    outColor = texCol * vec4(ambient + diffuse, 1.0f);
-    //outColor = texCol;
+   // vec4 texCol = texture(texSampler, texCoord);
+    //vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
+    //outColor = texCol * vec4(ambient + diffuse, 1.0f);
+    outColor = vec4(1.0,1.0,1.0,1.0);
 }
