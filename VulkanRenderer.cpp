@@ -168,10 +168,14 @@ void VulkanRenderer::Render()
     vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &sceneGeometry.vertexBuffer, offsets);
     vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, sceneGeometry.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    uint32_t dynamicOffsetCount[1] = { 0 };
-    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
+    for (size_t item = 0; item < 30; item++)
+    {
+        DrawItem(item);
+    }
+    //uint32_t dynamicOffsetCount[1] = { 0 };
+    //vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
     //vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
-    vkCmdDrawIndexed(vulkanBase->cmdBuffer,faceCount * 3, 1, 0, 0, 0);
+    //vkCmdDrawIndexed(vulkanBase->cmdBuffer,faceCount * 3, 1, 0, 0, 0);
 
     /*
     for (int i = 0; i < SQUARE_COUNT; i++)
@@ -211,6 +215,16 @@ void VulkanRenderer::updateRotation()
 {
     angle += 0.0001;
     // first box
+    char* uboPerObj = (char*)uboData + uboGlobalProps.size;
+
+    for (size_t item = 0; item < renderableItems.size(); item++)
+    {
+        uint32_t uboOffset = item * uboPerObjProps.size;
+        renderableItems[item].uboOffset = uboOffset;
+        memcpy(uboPerObj + uboOffset, &renderableItems[item].transformation, sizeof(PerObjUbo));
+    }
+
+    /*
     for (int z = 0; z < SQUARE_COUNT_Z; z++)
     {
         for (int y = 0; y < SQUARE_COUNT_Y; y++)
@@ -227,7 +241,7 @@ void VulkanRenderer::updateRotation()
 
     PerObjUbo perObjUbo = {};
     perObjUbo.model = glm::mat4(1.0f);
-    memcpy(uboData, &perObjUbo, sizeof(PerObjUbo));
+    memcpy(uboData, &perObjUbo, sizeof(PerObjUbo));*/
 }
 
 void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up)
@@ -235,8 +249,6 @@ void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& cente
     GlobalUbo globalUbo = {};
 
     globalUbo.view = glm::lookAtLH(eye, center, up);
-    //globalUbo.proj = perspectiveTest(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
-    //    (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 10.0f);
     globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 90.0f);
     globalUbo.proj[1][1] *= -1;
@@ -319,9 +331,9 @@ void VulkanRenderer::loadScene(const std::string& path)
         for (int j = 0; j < scene->mMeshes[i]->mNumFaces; j++)
         {
             uint32_t face[3];
-            face[0] = scene->mMeshes[i]->mFaces[j].mIndices[0] + vertCount;
-            face[1] = scene->mMeshes[i]->mFaces[j].mIndices[1] + vertCount;
-            face[2] = scene->mMeshes[i]->mFaces[j].mIndices[2] + vertCount;
+            face[0] = scene->mMeshes[i]->mFaces[j].mIndices[0];
+            face[1] = scene->mMeshes[i]->mFaces[j].mIndices[1];
+            face[2] = scene->mMeshes[i]->mFaces[j].mIndices[2];
             memcpy(dataIB + faceCount * 3 * sizeof(uint32_t) + j * sizeof(uint32_t) * 3, face, sizeof(uint32_t) * 3);
         }
 
@@ -455,10 +467,10 @@ void VulkanRenderer::CreateUbo()
     uboGlobalProps = getBufferMemoryProperties(vulkanBase->device, sizeof(GlobalUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     totalMemorySize += uboGlobalProps.size;
     uboPerObjProps = getBufferMemoryProperties(vulkanBase->device, sizeof(PerObjUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-    totalMemorySize += uboPerObjProps.size * SQUARE_COUNT;
+    totalMemorySize += uboPerObjProps.size * renderableItems.size();
 
     vector<VkDeviceSize> offsets = { 0, uboGlobalProps.size};
-    vector<VkDeviceSize> sizes = { uboGlobalProps.size, uboPerObjProps.size * SQUARE_COUNT };
+    vector<VkDeviceSize> sizes = { uboGlobalProps.size, uboPerObjProps.size * renderableItems.size() };
     UniformBuffer ubo = createUniformBuffer(vulkanBase->device, vulkanBase->physicalDevice, totalMemorySize, offsets, sizes);
     
     vkDestroyBuffer(vulkanBase->device, ubo.globalBuffer, nullptr);
@@ -841,6 +853,20 @@ void VulkanRenderer::PrepareTexture()
 
     vkDestroyBuffer(vulkanBase->device, stagingBuffer, nullptr);
     vkFreeMemory(vulkanBase->device, stagingBufferMem, nullptr);
+
+}
+
+void VulkanRenderer::DrawItem(size_t idx)
+{
+    Object* item = &renderableItems[idx];
+    uint32_t dynamicOffsetCount[1] = { item->uboOffset };
+    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
+
+    for (size_t i = 0; i < item->meshIdx.size(); i++)
+    {
+        uint32_t currentMesh = item->meshIdx[i];
+        vkCmdDrawIndexed(vulkanBase->cmdBuffer, sceneGeometry.indexCount[currentMesh], 1, sceneGeometry.ibOffset[currentMesh], sceneGeometry.vbOffset[currentMesh], 0);
+    }
 
 }
 

@@ -45,7 +45,7 @@ struct PerObjUbo
 struct Object
 {
 	std::vector<size_t> meshIdx;
-	uint32_t ubOffset;
+	uint32_t uboOffset;
 	PerObjUbo transformation;
 };
 
@@ -67,6 +67,7 @@ private:
 	void CreatePoolAndSets();
 	void CreateSampler();
 	void PrepareTexture();
+	void DrawItem(size_t idx);
 	void loadScene(const std::string& path);
 	void parseObjectTree(aiNode* node, const glm::mat4x4& transform);
 	static std::vector<char> readFile(const std::string& filename);
