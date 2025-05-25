@@ -370,8 +370,30 @@ void VulkanRenderer::loadScene(const std::string& path)
     // -------------------
     // Read structure info 
     // -------------------
-    int x = 2;
+    parseObjectTree(scene->mRootNode, glm::mat4(1.0f));
+}
 
+void VulkanRenderer::parseObjectTree(aiNode* node, const glm::mat4x4& transform)
+{
+    glm::mat4x4 localTransform;
+    memcpy(&localTransform, &node->mTransformation, sizeof(float) * 4 * 4);
+    localTransform = glm::transpose(localTransform);// assimp stores transforms in row major
+    localTransform = localTransform * transform;
+    if (node->mNumMeshes != 0)
+    {
+        Object obj = {};
+        obj.transformation.model = localTransform;
+        obj.meshIdx.resize(node->mNumMeshes);
+        for (size_t i = 0; i < node->mNumMeshes; i++)
+        {
+            obj.meshIdx[i] = node->mMeshes[i];
+        }
+        renderableItems.push_back(std::move(obj));
+    }
+    for (size_t i = 0; i < node->mNumChildren; i++)
+    {
+        parseObjectTree(node->mChildren[i], localTransform);
+    }
 }
 
 VulkanRenderer::~VulkanRenderer()

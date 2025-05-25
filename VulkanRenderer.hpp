@@ -68,6 +68,7 @@ private:
 	void CreateSampler();
 	void PrepareTexture();
 	void loadScene(const std::string& path);
+	void parseObjectTree(aiNode* node, const glm::mat4x4& transform);
 	static std::vector<char> readFile(const std::string& filename);
 private:
 	MeshCollection geometry;
@@ -76,6 +77,7 @@ private:
 	VkBuffer uboPerObj;
 	BufferMemoryProperties uboGlobalProps;
 	BufferMemoryProperties uboPerObjProps;
+	std::vector<Object> renderableItems;
 
 	VkDeviceMemory uboDevMem;
 	void* uboData;
