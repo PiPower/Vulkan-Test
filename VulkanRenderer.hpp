@@ -5,12 +5,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "VulkanOps.hpp"
 #include <string>
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
 #define SQUARE_COUNT_X 5
 #define SQUARE_COUNT_Z 5
 #define SQUARE_COUNT_Y 5
 #define SQUARE_COUNT  (SQUARE_COUNT_X * SQUARE_COUNT_Z * SQUARE_COUNT_Y)
 
-struct GeometryCollection
+struct MeshCollection
 {
 	VkBuffer vertexBuffer;
 	VkDeviceMemory vbDevMem;
@@ -22,14 +26,37 @@ struct GeometryCollection
 
 };
 
+struct GlobalUbo
+{
+	glm::mat4 view;
+	glm::mat4 proj;
+	glm::vec4 lightPos; // w component is 
+	glm::vec4 lightCol; // w component is 
+	//matrix proj;
+	//char alignment[256 - (224 - 4 * 4) ];
+};
+
+struct PerObjUbo
+{
+	glm::mat4 model;
+};
+
+
+struct Object
+{
+	std::vector<size_t> meshIdx;
+	uint32_t ubOffset;
+	PerObjUbo transformation;
+};
+
+
 class VulkanRenderer
 {
 public:
-	VulkanRenderer(HINSTANCE hinstance, HWND hwnd);
+	VulkanRenderer(HINSTANCE hinstance, HWND hwnd, const std::string& path);
 	void Render();
 	void updateRotation();
 	void updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up);
-	void loadScene(const std::string& path);
 	~VulkanRenderer();
 private:
 	void CreateVertexBuffer();
@@ -40,10 +67,11 @@ private:
 	void CreatePoolAndSets();
 	void CreateSampler();
 	void PrepareTexture();
+	void loadScene(const std::string& path);
 	static std::vector<char> readFile(const std::string& filename);
 private:
-	GeometryCollection geometry;
-	GeometryCollection sceneGeometry;
+	MeshCollection geometry;
+	MeshCollection sceneGeometry;
 	VkBuffer uboGlobal;
 	VkBuffer uboPerObj;
 	BufferMemoryProperties uboGlobalProps;

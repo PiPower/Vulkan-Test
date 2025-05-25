@@ -10,9 +10,6 @@
 #include <fstream>
 #include "ImageFile.h"
 #define TEXTURE_FORMAT VK_FORMAT_R8G8B8A8_SRGB
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h>
 
 using namespace std;
 struct Vertex
@@ -68,22 +65,6 @@ const std::vector<uint16_t> indices = {
 };
 
 
-struct GlobalUbo
-{
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::vec4 lightPos; // w component is 
-    glm::vec4 lightCol; // w component is 
-    //matrix proj;
-    //char alignment[256 - (224 - 4 * 4) ];
-};
-
-struct PerObjUbo
-{
-    glm::mat4 model;
-};
-
-
 template<typename T>
 GLM_FUNC_QUALIFIER glm::mat<4, 4, T, glm::defaultp> perspectiveTest(T fovy, T aspect, T zNear, T zFar)
 {
@@ -126,20 +107,18 @@ GLM_FUNC_QUALIFIER glm::mat<4, 4, T, Q> lookAtRH23(glm::vec<3, T, Q> const& eye,
     return Result;
 }
 
-VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd)
+VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd, const std::string& path)
 {
     vulkanBase = createVulkanBase(hinstance, hwnd);
-    geometry.vbOffset = { 0 };
-    geometry.ibOffset = { 0 };;
-    geometry.indexCount = { (uint32_t)indices.size() };
-    CreateVertexBuffer();
-    CreateIndexBuffer();
-    CreateUbo();
+    //CreateVertexBuffer();
+    //CreateIndexBuffer();
+    loadScene(path);
     CreateSampler();
     PrepareTexture();
     CreatePipelineLayout();
-    CreatePoolAndSets();
     CreateGraphicsPipeline();
+    CreateUbo();
+    CreatePoolAndSets();
 }
 
 void VulkanRenderer::Render()
@@ -239,9 +218,7 @@ void VulkanRenderer::updateRotation()
             for (int x = 0; x < SQUARE_COUNT_X; x++)
             {
                 PerObjUbo perObjUbo = {};
-                perObjUbo.model = glm::rotate(glm::mat4(1.0f), -angle, glm::vec3(0.0f, 1.0f, 0.0f));
-                perObjUbo.model = glm::rotate(glm::mat4(1.0f), 0.0f, glm::vec3(1.0f, 0.0f, 0.0f)) * perObjUbo.model;
-                perObjUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(-2 * SQUARE_COUNT_X + 4.0f * x, -2 * SQUARE_COUNT_Y + 4.0f * y, -2 * SQUARE_COUNT_Z + 4.0f * z)) * perObjUbo.model;
+                perObjUbo.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
                 char* objBuffPtr = (char*)uboData + uboGlobalProps.size + (z * SQUARE_COUNT_Y * SQUARE_COUNT_X + y * SQUARE_COUNT_X + x) * uboPerObjProps.size;
                 memcpy(objBuffPtr, &perObjUbo, sizeof(PerObjUbo));
             }
@@ -347,6 +324,10 @@ void VulkanRenderer::loadScene(const std::string& path)
             face[2] = scene->mMeshes[i]->mFaces[j].mIndices[2] + vertCount;
             memcpy(dataIB + faceCount * 3 * sizeof(uint32_t) + j * sizeof(uint32_t) * 3, face, sizeof(uint32_t) * 3);
         }
+
+        sceneGeometry.vbOffset.push_back(vertCount);
+        sceneGeometry.ibOffset.push_back(faceCount * 3);
+        sceneGeometry.indexCount.push_back(scene->mMeshes[i]->mNumFaces * 3);
         vertCount += scene->mMeshes[i]->mNumVertices;
         faceCount += scene->mMeshes[i]->mNumFaces;
     }
@@ -386,7 +367,11 @@ void VulkanRenderer::loadScene(const std::string& path)
     vkFreeMemory(vulkanBase->device, stagingVbDevMem, nullptr);
     vkFreeMemory(vulkanBase->device, stagingIbDevMem, nullptr);
 
+    // -------------------
+    // Read structure info 
+    // -------------------
     int x = 2;
+
 }
 
 VulkanRenderer::~VulkanRenderer()
@@ -437,6 +422,9 @@ void VulkanRenderer::CreateIndexBuffer()
     vkMapMemory(vulkanBase->device, geometry.ibDevMem, 0, buffInfo.size, 0, &data);
     memcpy(data, indices.data(), buffInfo.size);
     vkUnmapMemory(vulkanBase->device, geometry.ibDevMem);
+
+
+
 }
 
 void VulkanRenderer::CreateUbo()

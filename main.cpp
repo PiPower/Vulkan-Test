@@ -7,12 +7,10 @@ void updatePosition(float dt, Window* window, glm::vec3* eye, glm::vec3* centerV
 int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
     Window* wnd = new Window(1600, 900, L"yolo", L"test");
-    VulkanRenderer* renderer = new VulkanRenderer(hInstance, wnd->GetWindowHWND());
-    glm::vec3 eye{ 0.0f, 0.0f, -20.0f }, centerDir{ 0.0f, 0.0f, 1.0f }, up{ 0.0f, 1.0f, 0.0f }, upLook{ 0.0f, 1.0f, 0.0f };
+    VulkanRenderer* renderer = new VulkanRenderer(hInstance, wnd->GetWindowHWND(), "D:\\main1_sponza\\NewSponza_Main_glTF_003.gltf");
+    glm::vec3 eye{ 0.0f, 10.0f, -10.0f }, centerDir{ 0.0f, 0.0f, 1.0f }, up{ 0.0f, 1.0f, 0.0f }, upLook{ 0.0f, 1.0f, 0.0f };
     glm::vec3 center = eye + centerDir;
     renderer->updateRotation();
-
-    renderer->loadScene("D:\\main1_sponza\\NewSponza_Main_glTF_003.gltf");
 
     while (wnd->ProcessMessages() == 0)
     {
