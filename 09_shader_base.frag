@@ -32,5 +32,5 @@ void main()
    // vec4 texCol = texture(texSampler, texCoord);
     //vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
     //outColor = texCol * vec4(ambient + diffuse, 1.0f);
-    outColor = vec4(1.0,1.0,1.0,1.0);
+    outColor = vec4(texCoord.x,texCoord.y,1.0,1.0);
 }

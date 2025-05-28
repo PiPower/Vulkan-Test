@@ -15,7 +15,7 @@ using namespace std;
 struct Vertex
 {
     glm::vec3 pos;
-    glm::vec3 color;
+    glm::vec3 normal;
     glm::vec2 tex;
 };
 
@@ -168,7 +168,7 @@ void VulkanRenderer::Render()
     vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &sceneGeometry.vertexBuffer, offsets);
     vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, sceneGeometry.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    for (size_t item = 0; item < 30; item++)
+    for (size_t item = 0; item < renderableItems.size(); item++)
     {
         DrawItem(item);
     }
@@ -325,6 +325,9 @@ void VulkanRenderer::loadScene(const std::string& path)
             vert.pos.y = scene->mMeshes[i]->mVertices[j].y;
             vert.pos.z = scene->mMeshes[i]->mVertices[j].z;
             vert.pos.x = scene->mMeshes[i]->mVertices[j].x;
+
+            vert.tex.x = scene->mMeshes[i]->mTextureCoords[0][j].x;
+            vert.tex.y = scene->mMeshes[i]->mTextureCoords[0][j].y;
             memcpy(dataVB + vertCount * sizeof(Vertex) + j * sizeof(Vertex), &vert, sizeof(Vertex));
         }
 
@@ -519,7 +522,7 @@ void VulkanRenderer::CreateGraphicsPipeline()
     vertAttr[1].binding = 0;
     vertAttr[1].location = 1;
     vertAttr[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    vertAttr[1].offset = offsetof(Vertex, color);
+    vertAttr[1].offset = offsetof(Vertex, normal);
 
     vertAttr[2].binding = 0;
     vertAttr[2].location = 2;
@@ -549,6 +552,7 @@ void VulkanRenderer::CreateGraphicsPipeline()
     rasterInfo.depthClampEnable = VK_FALSE;
     rasterInfo.rasterizerDiscardEnable = VK_FALSE;
     rasterInfo.polygonMode = VK_POLYGON_MODE_FILL;
+    //rasterInfo.polygonMode = VK_POLYGON_MODE_LINE;
     rasterInfo.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
     //rasterInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
