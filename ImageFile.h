@@ -10,7 +10,11 @@ public:
 	const int GetWidth() const noexcept;
 	const int GetHeight() const noexcept;
 	~ImageFile();
-private:
+	static void InitModule();
+	static void CloseModule();
+	static bool AllFinished();
+public:
+	volatile bool loadingIsFinished;
 	int width;
 	int height;
 	unsigned int* FileBuff = nullptr;

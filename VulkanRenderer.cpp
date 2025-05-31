@@ -8,9 +8,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <fstream>
-#include "ImageFile.h"
 #define TEXTURE_FORMAT VK_FORMAT_R8G8B8A8_SRGB
-
 using namespace std;
 struct Vertex
 {
@@ -262,6 +260,12 @@ void VulkanRenderer::loadScene(const std::string& path)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder);
+    // -------------------
+    // Read material info  async
+    // -------------------
+    vector<ImageFile*> images = ReadTextures(scene->mMaterials, scene->mNumMaterials, path);
+
+
     size_t vertexCount = 0;
     size_t indexCount = 0;
     for (int i = 0; i < scene->mNumMeshes; i++)
@@ -386,6 +390,11 @@ void VulkanRenderer::loadScene(const std::string& path)
     // Read structure info 
     // -------------------
     parseObjectTree(scene->mRootNode, glm::mat4(1.0f));
+    // -------------------
+    // Uploading materials to GPU
+    // ---
+    UploadImages(images);
+
 }
 
 void VulkanRenderer::parseObjectTree(aiNode* node, const glm::mat4x4& transform)
@@ -726,7 +735,7 @@ void VulkanRenderer::CreatePoolAndSets()
     descriptorWrite[1].descriptorCount = 1;
     descriptorWrite[1].pImageInfo = &imgInfo;
 
-    descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;      
     descriptorWrite[2].dstSet = descSet;
     descriptorWrite[2].dstBinding = 2;
     descriptorWrite[2].dstArrayElement = 0;
@@ -859,6 +868,90 @@ void VulkanRenderer::PrepareTexture()
     vkFreeMemory(vulkanBase->device, stagingBufferMem, nullptr);
 
 }
+
+vector<ImageFile*> VulkanRenderer::ReadTextures(aiMaterial** materialArray, uint32_t materialCount, const std::string& sceneRootPath)
+{
+    ImageFile::InitModule();
+
+    vector<ImageFile*> textureFiles;
+    textureFiles.resize(materialCount + 1);
+    uint32_t arrayPtr = 0;
+
+    constexpr uint32_t pathBufferSize = 400;
+    wchar_t path[pathBufferSize];
+    uint32_t pathBasePtr = 0;
+    while (sceneRootPath[pathBasePtr] != '\0')
+    {
+        path[pathBasePtr] = sceneRootPath[pathBasePtr];
+        pathBasePtr++;
+    }
+    while (sceneRootPath[pathBasePtr - 1] != '\\') { pathBasePtr--; }
+    
+
+    for (uint32_t i = 0; i < materialCount; i++)
+    {
+        aiMaterial* processedMaterial = materialArray[i];
+        aiString str;
+        aiReturn ret = processedMaterial->GetTexture(aiTextureType_BASE_COLOR, 0, &str);
+        if (ret != aiReturn_SUCCESS)
+        {
+            continue;
+        }
+
+        uint32_t j = 0;
+        const char* currentLetter = str.C_Str();
+        while (*currentLetter  != '\0' && j + pathBasePtr < pathBufferSize - 1)
+        {
+            if (*currentLetter == '/')
+            {
+                if (j + pathBasePtr + 2>= pathBufferSize - 1)
+                {
+                    OutputDebugStringW(L"Requested path is too long, increase buffer size for texture loading\n");
+                    exit(-1);
+                }
+                path[pathBasePtr + j] = '\\';
+                j += 1;
+            }
+            else
+            {
+                path[pathBasePtr + j] = *currentLetter;
+                j++;
+            }
+            currentLetter++;
+        }
+        path[pathBasePtr + j] = '\0';
+        textureFiles[arrayPtr] =  new ImageFile(path);
+        arrayPtr++;
+        
+    }
+
+    return textureFiles;
+}
+
+void VulkanRenderer::UploadImages(const std::vector<ImageFile*>& textureFiles)
+{
+    // Synchronization stage
+    uint32_t arrayPtr = 0;
+    while (textureFiles[arrayPtr] != NULL)
+    {
+        arrayPtr++;
+    }
+    bool allFinished = false;
+    while (!allFinished)
+    {
+        allFinished = true;
+        for (int i = 0; i < arrayPtr; i++)
+        {
+            if (!textureFiles[i]->loadingIsFinished)
+            {
+                allFinished = false;
+                continue;
+            }
+        }
+    }
+    int x = 2;
+}
+
 
 void VulkanRenderer::DrawItem(size_t idx)
 {
