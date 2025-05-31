@@ -162,6 +162,7 @@
     <ClCompile Include="ImageFile.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="TextureArray.cpp" />
     <ClCompile Include="VulkanOps.cpp" />
     <ClCompile Include="VulkanBase.cpp" />
     <ClCompile Include="VulkanRenderer.cpp" />
@@ -172,6 +173,7 @@
   <ItemGroup>
     <ClInclude Include="ImageFile.h" />
     <ClInclude Include="Scene.hpp" />
+    <ClInclude Include="TextureArray.h" />
     <ClInclude Include="VulkanBase.hpp" />
     <ClInclude Include="VulkanBaseInternal.hpp" />
     <ClInclude Include="VulkanOps.hpp" />

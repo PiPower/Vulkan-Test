@@ -119,44 +119,47 @@ bool ImageFile::AllFinished()
     return false;
 }
 
+void performTask(TaskDescriptor task)
+{
+    Gdiplus::Bitmap bmp(task.path.c_str());
+
+    assert(bmp.GetLastStatus() == Gdiplus::Status::Ok);
+
+    task.loadble->height = bmp.GetHeight();
+    task.loadble->width = bmp.GetWidth();
+
+    task.loadble->FileBuff = new unsigned int[task.loadble->width * task.loadble->height];
+
+    for (int y = 0; y < task.loadble->height; y++)
+        for (int x = 0; x < task.loadble->width; x++)
+        {
+            Gdiplus::Color col;
+            bmp.GetPixel(x, y, &col);
+            unsigned int color = (unsigned int)col.GetRed() |
+                col.GetGreen() << 8 | col.GetBlue() << 16 | col.GetAlpha() << 24;
+            task.loadble->FileBuff[y * task.loadble->width + x] = color;
+        }
+    task.loadble->loadingIsFinished = true;
+}
 static void loadImage(GlobalState* state, const int threadIdx)
 {
     while (state->terminateThread[threadIdx] == false)
     {
         TaskDescriptor task;
-        while (true)
+        state->queueAccesMutes.lock();
+        if (state->loadableQueue.size() > 0)
         {
-            state->queueAccesMutes.lock();
-            if (state->loadableQueue.size() > 0)
-            {
 
-                task = state->loadableQueue.front();
-                state->loadableQueue.pop();
-                state->queueAccesMutes.unlock();
-                break;
-            }
+            task = state->loadableQueue.front();
+            state->loadableQueue.pop();
             state->queueAccesMutes.unlock();
-            Sleep(200);
+            performTask(task);
         }
-
-        Gdiplus::Bitmap bmp(task.path.c_str());
-
-        assert(bmp.GetLastStatus() == Gdiplus::Status::Ok);
-
-        task.loadble->height = bmp.GetHeight();
-        task.loadble->width = bmp.GetWidth();
-
-        task.loadble->FileBuff = new unsigned int[task.loadble->width * task.loadble->height];
-
-        for (int y = 0; y < task.loadble->height; y++)
-            for (int x = 0; x < task.loadble->width; x++)
-            {
-                Gdiplus::Color col;
-                bmp.GetPixel(x, y, &col);
-                unsigned int color = (unsigned int)col.GetRed() |
-                    col.GetGreen() << 8 | col.GetBlue() << 16 | col.GetAlpha() << 24;
-                task.loadble->FileBuff[y * task.loadble->width + x] = color;
-            }
-        task.loadble->loadingIsFinished = true;
+        else
+        {
+            state->queueAccesMutes.unlock();
+        }
+        Sleep(200);
+       
     }
 }

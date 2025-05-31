@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS 1
 #define RIGHT_FACE 4
 #define LEFT_FACE 8
 #define BACK_FACE 12
@@ -9,6 +10,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <fstream>
 #define TEXTURE_FORMAT VK_FORMAT_R8G8B8A8_SRGB
+
 using namespace std;
 struct Vertex
 {
@@ -260,11 +262,6 @@ void VulkanRenderer::loadScene(const std::string& path)
 {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_MakeLeftHanded | aiProcess_FlipWindingOrder);
-    // -------------------
-    // Read material info  async
-    // -------------------
-    vector<ImageFile*> images = ReadTextures(scene->mMaterials, scene->mNumMaterials, path);
-
 
     size_t vertexCount = 0;
     size_t indexCount = 0;
@@ -390,10 +387,30 @@ void VulkanRenderer::loadScene(const std::string& path)
     // Read structure info 
     // -------------------
     parseObjectTree(scene->mRootNode, glm::mat4(1.0f));
+
+    // -------------------
+    // Read material info  async
+    // -------------------
+
+    TextureArray array(100);
+    string cachePath = path.substr(0, path.find_last_of('\\'));
+
+    cachePath += "\\textures\\textureArray.cache";
+    if (!array.loadFromFile(cachePath))
+    {
+        vector<ImageFile*> images = GenerateTextureArrayCache(scene->mMaterials, scene->mNumMaterials, path, cachePath);
+        for (int i = 0; i < images.size(); i++)
+        {
+            delete images[i];
+        }
+        array.loadFromFile(cachePath);
+    }
+
+
     // -------------------
     // Uploading materials to GPU
-    // ---
-    UploadImages(images);
+    // -------------------
+    UploadImages(array);
 
 }
 
@@ -869,12 +886,13 @@ void VulkanRenderer::PrepareTexture()
 
 }
 
-vector<ImageFile*> VulkanRenderer::ReadTextures(aiMaterial** materialArray, uint32_t materialCount, const std::string& sceneRootPath)
+vector<ImageFile*> VulkanRenderer::GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, 
+                        const std::string& sceneRootPath, const std::string& cachePath)
 {
     ImageFile::InitModule();
 
     vector<ImageFile*> textureFiles;
-    textureFiles.resize(materialCount + 1);
+    textureFiles.resize(materialCount);
     uint32_t arrayPtr = 0;
 
     constexpr uint32_t pathBufferSize = 400;
@@ -887,7 +905,6 @@ vector<ImageFile*> VulkanRenderer::ReadTextures(aiMaterial** materialArray, uint
     }
     while (sceneRootPath[pathBasePtr - 1] != '\\') { pathBasePtr--; }
     
-
     for (uint32_t i = 0; i < materialCount; i++)
     {
         aiMaterial* processedMaterial = materialArray[i];
@@ -925,17 +942,6 @@ vector<ImageFile*> VulkanRenderer::ReadTextures(aiMaterial** materialArray, uint
         
     }
 
-    return textureFiles;
-}
-
-void VulkanRenderer::UploadImages(const std::vector<ImageFile*>& textureFiles)
-{
-    // Synchronization stage
-    uint32_t arrayPtr = 0;
-    while (textureFiles[arrayPtr] != NULL)
-    {
-        arrayPtr++;
-    }
     bool allFinished = false;
     while (!allFinished)
     {
@@ -949,8 +955,41 @@ void VulkanRenderer::UploadImages(const std::vector<ImageFile*>& textureFiles)
             }
         }
     }
-    int x = 2;
+
+    ImageFile::CloseModule();
+
+    fstream cacheFile(cachePath.c_str(), ios::out | ios::binary);
+    if (!cacheFile.is_open())
+    {
+        OutputDebugString(L"Could not create texture array file");
+        exit(-1);
+    }
+
+    cacheFile.write((char*)  &arrayPtr, sizeof(uint32_t));
+    for (uint32_t i = 0; i < arrayPtr; i++)
+    {
+        uint32_t width = textureFiles[i]->width;
+        uint32_t height = textureFiles[i]->height;
+        uint32_t format = IMAGE_FORMAT_R8G8B8A8;
+
+        cacheFile.write((char*)&width, sizeof(uint32_t));
+        cacheFile.write((char*)&height, sizeof(uint32_t));
+        cacheFile.write((char*)&format, sizeof(uint32_t));
+    }
+
+    for (uint32_t i = 0; i < arrayPtr; i++)
+    {
+        cacheFile.write((char*)textureFiles[i]->FileBuff, textureFiles[i]->width * textureFiles[i]->height * sizeof(int));
+    }
+
+    cacheFile.close();
+    return textureFiles;
 }
+
+void VulkanRenderer::UploadImages(const TextureArray& textureArray)
+{
+}
+
 
 
 void VulkanRenderer::DrawItem(size_t idx)

@@ -9,6 +9,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include "ImageFile.h"
+#include "TextureArray.h"
 
 #define SQUARE_COUNT_X 5
 #define SQUARE_COUNT_Z 5
@@ -68,8 +69,8 @@ private:
 	void CreatePoolAndSets();
 	void CreateSampler();
 	void PrepareTexture();
-	std::vector<ImageFile*> ReadTextures(aiMaterial** materialArray, uint32_t materialCount, const std::string& sceneRootPath);
-	void UploadImages(const std::vector<ImageFile*>& textureFiles);
+	std::vector<ImageFile*> GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, const std::string& sceneRootPath, const std::string& cachePath);
+	void UploadImages(const TextureArray& textureArray);
 	void DrawItem(size_t idx);
 	void loadScene(const std::string& path);
 	void parseObjectTree(aiNode* node, const glm::mat4x4& transform);
