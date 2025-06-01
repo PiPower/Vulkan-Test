@@ -168,9 +168,13 @@ void VulkanRenderer::Render()
     vkCmdBindVertexBuffers(vulkanBase->cmdBuffer, 0, 1, &sceneGeometry.vertexBuffer, offsets);
     vkCmdBindIndexBuffer(vulkanBase->cmdBuffer, sceneGeometry.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-    for (size_t item = 0; item < renderableItems.size(); item++)
+    for (size_t item = 0; item < renderableItems.size() ; item++)
     {
-        DrawItem(item);
+        // probably items 43, renderableItems.size() - 22, renderableItems.size() - 2,  requires technique that is some type of blending
+        if (item != 43 && item != renderableItems.size() - 22 && item != renderableItems.size() - 2)
+        {
+            DrawItem(item);
+        }
     }
     //uint32_t dynamicOffsetCount[1] = { 0 };
     //vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
@@ -265,6 +269,23 @@ void VulkanRenderer::loadScene(const std::string& path)
 
     size_t vertexCount = 0;
     size_t indexCount = 0;
+    uint32_t imageArrayOffset = 0;
+    for (uint32_t i = 0; i < scene->mNumMaterials; i++)
+    {
+        aiMaterial* processedMaterial = scene->mMaterials[i];
+        aiString str;
+        aiReturn ret = processedMaterial->GetTexture(aiTextureType_BASE_COLOR, 0, &str);
+        if (ret != aiReturn_SUCCESS)
+        {
+            materialTextureIdx.push_back(0);
+        }
+        else
+        {
+            materialTextureIdx.push_back(imageArrayOffset);
+            imageArrayOffset++;
+        }
+
+    }
     for (int i = 0; i < scene->mNumMeshes; i++)
     {
         if (scene->mMeshes[i]->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
@@ -430,6 +451,7 @@ void VulkanRenderer::parseObjectTree(aiNode* node, const glm::mat4x4& transform)
             obj.meshIdx[i] = node->mMeshes[i];
         }
         obj.transformation.index = glm::ivec4();
+        obj.name = node->mName.C_Str();
         renderableItems.push_back(std::move(obj));
     }
     for (size_t i = 0; i < node->mNumChildren; i++)
@@ -692,12 +714,17 @@ void VulkanRenderer::CreatePipelineLayout()
     descSetLayoutInfo.pBindings = bindings;
     vkCreateDescriptorSetLayout(vulkanBase->device, &descSetLayoutInfo, nullptr, &descSetLayout);
 
+    VkPushConstantRange range = {};
+    range.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    range.offset = 0;
+    range.size = sizeof(int) * 4;
+
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.setLayoutCount = 1;
     layoutInfo.pSetLayouts = &descSetLayout;
-    layoutInfo.pushConstantRangeCount = 0;
-    layoutInfo.pPushConstantRanges = nullptr;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges = &range;
     vkCreatePipelineLayout(vulkanBase->device, &layoutInfo, nullptr, &pipelineLayout);
 }
 
@@ -1125,10 +1152,16 @@ void VulkanRenderer::DrawItem(size_t idx)
     Object* item = &renderableItems[idx];
     uint32_t dynamicOffsetCount[1] = { item->uboOffset };
     vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
-
     for (size_t i = 0; i < item->meshIdx.size(); i++)
     {
         uint32_t currentMesh = item->meshIdx[i];
+        uint32_t materialIndex = sceneGeometry.materialIndex[currentMesh];
+        int constants[4] = {materialTextureIdx[materialIndex], 0, 0, 0};
+        if (materialTextureIdx[materialIndex] == 0 && materialIndex != 0)
+        {
+            continue;
+        }
+        vkCmdPushConstants(vulkanBase->cmdBuffer, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, 4 * sizeof(int), constants);
         vkCmdDrawIndexed(vulkanBase->cmdBuffer, sceneGeometry.indexCount[currentMesh], 1, sceneGeometry.ibOffset[currentMesh], sceneGeometry.vbOffset[currentMesh], 0);
     }
 

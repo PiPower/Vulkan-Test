@@ -19,6 +19,13 @@ layout(binding = 2) uniform  PerObjUbo
 
 layout(binding = 1) uniform sampler2D texSampler[TEXTURE_COUNT];
 
+//push constants block
+layout( push_constant ) uniform constants
+{
+    ivec4 index;
+} PushConstants;
+
+
 layout(location = 0) in vec3 faceNormal;
 layout(location = 1) in vec2 texCoord; 
 layout(location = 2) in vec4 worldPos;
@@ -36,6 +43,6 @@ void main()
    // vec4 texCol = texture(texSampler, texCoord);
     //vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
     //outColor = texCol * vec4(ambient + diffuse, 1.0f);
-    vec4 texCol = texture(texSampler[0], texCoord);
+    vec4 texCol = texture(texSampler[PushConstants.index.x], texCoord);
     outColor = texCol;
 }

@@ -8,7 +8,7 @@
 #include <mutex>
 #pragma comment (lib,"Gdiplus.lib")
 
-#define THREAD_COUNT 8
+#define THREAD_COUNT 1
 struct TaskDescriptor
 {
     std::wstring path;

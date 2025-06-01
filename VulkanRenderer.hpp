@@ -49,6 +49,7 @@ struct Object
 {
 	std::vector<size_t> meshIdx;
 	uint32_t uboOffset;
+	std::string name;
 	PerObjUbo transformation;
 };
 
@@ -80,6 +81,7 @@ private:
 private:
 	MeshCollection geometry;
 	MeshCollection sceneGeometry;
+	std::vector<uint32_t> materialTextureIdx;
 	VkBuffer uboGlobal;
 	VkBuffer uboPerObj;
 	BufferMemoryProperties uboGlobalProps;
