@@ -114,7 +114,7 @@ VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd, const std::string
     //CreateIndexBuffer();
     loadScene(path);
     CreateSampler();
-    PrepareTexture();
+    //PrepareTexture();
     CreatePipelineLayout();
     CreateGraphicsPipeline();
     CreateUbo();
@@ -319,7 +319,6 @@ void VulkanRenderer::loadScene(const std::string& path)
     uint32_t vertCount = 0;
     for (int i = 0; i < scene->mNumMeshes; i++)
     {
-
         for (int j = 0; j < scene->mMeshes[i]->mNumVertices; j++)
         {
             Vertex vert = {};
@@ -344,6 +343,7 @@ void VulkanRenderer::loadScene(const std::string& path)
         sceneGeometry.vbOffset.push_back(vertCount);
         sceneGeometry.ibOffset.push_back(faceCount * 3);
         sceneGeometry.indexCount.push_back(scene->mMeshes[i]->mNumFaces * 3);
+        sceneGeometry.materialIndex.push_back(scene->mMeshes[i]->mMaterialIndex);
         vertCount += scene->mMeshes[i]->mNumVertices;
         faceCount += scene->mMeshes[i]->mNumFaces;
     }
@@ -429,6 +429,7 @@ void VulkanRenderer::parseObjectTree(aiNode* node, const glm::mat4x4& transform)
         {
             obj.meshIdx[i] = node->mMeshes[i];
         }
+        obj.transformation.index = glm::ivec4();
         renderableItems.push_back(std::move(obj));
     }
     for (size_t i = 0; i < node->mNumChildren; i++)
@@ -516,12 +517,18 @@ void VulkanRenderer::CreateGraphicsPipeline()
     std::vector<char> vertSrc = readFile("vert.spv");
     std::vector<char> fragSrc = readFile("frag.spv");
 
+    string textureCount = to_string(materials.size());
     VkShaderModule vsModule, fsModule;
+    shaderc_compile_options_t options = shaderc_compile_options_initialize();
+    shaderc_compile_options_add_macro_definition(options, "TEXTURE_COUNT", 13, textureCount.c_str(), textureCount.size() - 1);
     shaderc_compiler_t compiler = shaderc_compiler_initialize();
-    fsModule = compileShader(vulkanBase->device, nullptr, "09_shader_base.frag", "main", shaderc_fragment_shader, compiler);
-    vsModule = compileShader(vulkanBase->device, nullptr, "09_shader_base.vert", "main", shaderc_vertex_shader, compiler);
-    shaderc_compiler_release(compiler);
 
+
+    fsModule = compileShader(vulkanBase->device, nullptr, "09_shader_base.frag", "main", shaderc_fragment_shader, compiler, options);
+    vsModule = compileShader(vulkanBase->device, nullptr, "09_shader_base.vert", "main", shaderc_vertex_shader, compiler, options);
+
+    shaderc_compiler_release(compiler);
+    shaderc_compile_options_release(options);
 
     VkPipelineShaderStageCreateInfo shaderInfo[2] = {};
     shaderInfo[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -668,7 +675,7 @@ void VulkanRenderer::CreatePipelineLayout()
 
     bindings[1].binding = 1;
     bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindings[1].descriptorCount = 1;
+    bindings[1].descriptorCount = materials.size();
     bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     bindings[1].pImmutableSamplers = nullptr;
 
@@ -701,7 +708,7 @@ void VulkanRenderer::CreatePoolAndSets()
     poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     poolSize[0].descriptorCount = 1;
     poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize[1].descriptorCount = 1;
+    poolSize[1].descriptorCount = materials.size();
     poolSize[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSize[2].descriptorCount = 1;
 
@@ -729,10 +736,14 @@ void VulkanRenderer::CreatePoolAndSets()
     perObjBufferInfo.offset = 0;
     perObjBufferInfo.range = uboPerObjProps.size;
 
-    VkDescriptorImageInfo imgInfo = {};
-    imgInfo.imageView = tex.texView;
-    imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imgInfo.sampler = sampler;
+    vector<VkDescriptorImageInfo> imgInfos;
+    for (int i = 0; i < materials.size(); i++)
+    {
+        imgInfos.push_back({});
+        imgInfos[i].imageView = materials[i].texView;
+        imgInfos[i].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imgInfos[i].sampler = sampler;
+    }
 
  
     VkWriteDescriptorSet descriptorWrite[3] = {};
@@ -749,8 +760,8 @@ void VulkanRenderer::CreatePoolAndSets()
     descriptorWrite[1].dstBinding = 1;
     descriptorWrite[1].dstArrayElement = 0;
     descriptorWrite[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrite[1].descriptorCount = 1;
-    descriptorWrite[1].pImageInfo = &imgInfo;
+    descriptorWrite[1].descriptorCount = imgInfos.size();
+    descriptorWrite[1].pImageInfo = imgInfos.data();
 
     descriptorWrite[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;      
     descriptorWrite[2].dstSet = descSet;
@@ -988,6 +999,123 @@ vector<ImageFile*> VulkanRenderer::GenerateTextureArrayCache(aiMaterial** materi
 
 void VulkanRenderer::UploadImages(const TextureArray& textureArray)
 {
+    // assert that every image has the same dims
+    size_t stagingBufferSize = 0;
+    
+    for (int i = 0; i < textureArray.images.size(); i++)
+    {
+        if (textureArray.images[i].format != textureArray.images[0].format)
+        {
+            OutputDebugString(L"Images with different formats are not supported\n");
+            exit(-1);
+        }
+        Texture tex = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice, 
+                   textureArray.images[i].width, textureArray.images[i].height, TEXTURE_FORMAT);
+        materials.push_back(tex);
+    }
+
+    VkBuffer stagingBuffer;
+    void* stagingPtr;
+    VkDeviceMemory stagingBufferMem;
+
+    VkBufferCreateInfo buffInfo = {};
+    buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    buffInfo.size = textureArray.imageDataSize;
+    buffInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &stagingBuffer);
+
+    VkMemoryRequirements memRequirements;
+    vkGetBufferMemoryRequirements(vulkanBase->device, stagingBuffer, &memRequirements);
+    stagingBufferMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    vkBindBufferMemory(vulkanBase->device, stagingBuffer, stagingBufferMem, 0);
+
+    vkMapMemory(vulkanBase->device, stagingBufferMem, 0, memRequirements.size, 0, &stagingPtr);
+    memcpy(stagingPtr, textureArray.dataBuffer, buffInfo.size);
+    vkUnmapMemory(vulkanBase->device, stagingBufferMem);
+
+    vector<VkImageMemoryBarrier> copyBarriers;
+    vector<VkBufferImageCopy> imgCopies;
+    vector<VkImageMemoryBarrier> layoutBarriers;
+
+    for (int i = 0; i < textureArray.images.size(); i++)
+    {
+        copyBarriers.push_back({});
+        copyBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        copyBarriers[i].srcAccessMask = 0;
+        copyBarriers[i].dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+        copyBarriers[i].oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        copyBarriers[i].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        copyBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        copyBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        copyBarriers[i].image = materials[i].texImage;
+        copyBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copyBarriers[i].subresourceRange.baseMipLevel = 0;
+        copyBarriers[i].subresourceRange.levelCount = 1;
+        copyBarriers[i].subresourceRange.baseArrayLayer = 0;
+        copyBarriers[i].subresourceRange.layerCount = 1;
+
+        imgCopies.push_back({});
+        imgCopies[i].bufferOffset = textureArray.images[i].bufferOffset;
+        imgCopies[i].bufferRowLength = 0;
+        imgCopies[i].bufferImageHeight = 0;
+        imgCopies[i].imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imgCopies[i].imageSubresource.mipLevel = 0;
+        imgCopies[i].imageSubresource.baseArrayLayer = 0;
+        imgCopies[i].imageSubresource.layerCount = 1;
+        imgCopies[i].imageOffset = { 0, 0, 0 };
+        imgCopies[i].imageExtent = {
+            (unsigned int)textureArray.images[i].width,
+            (unsigned int)textureArray.images[i].height,
+            1
+        };
+
+        layoutBarriers.push_back({});
+        layoutBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        layoutBarriers[i].srcAccessMask = 0;
+        layoutBarriers[i].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        layoutBarriers[i].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        layoutBarriers[i].newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        layoutBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        layoutBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        layoutBarriers[i].image = materials[i].texImage;
+        layoutBarriers[i].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        layoutBarriers[i].subresourceRange.baseMipLevel = 0;
+        layoutBarriers[i].subresourceRange.levelCount = 1;
+        layoutBarriers[i].subresourceRange.baseArrayLayer = 0;
+        layoutBarriers[i].subresourceRange.layerCount = 1;
+
+    }
+
+    // copy buffer to memory and transition all resources
+    VkCommandBufferBeginInfo cmdBuffInfo = {};
+    cmdBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    cmdBuffInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkResetCommandBuffer(vulkanBase->cmdBuffer, 0);
+    vkBeginCommandBuffer(vulkanBase->cmdBuffer, &cmdBuffInfo);
+
+    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, copyBarriers.size(), copyBarriers.data());
+
+    for (int i = 0; i < materials.size(); i++)
+    {
+        vkCmdCopyBufferToImage(vulkanBase->cmdBuffer, stagingBuffer, materials[i].texImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgCopies[i]);
+    }
+    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, layoutBarriers.size(), layoutBarriers.data());
+
+    vkEndCommandBuffer(vulkanBase->cmdBuffer);
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &vulkanBase->cmdBuffer;
+    vkQueueSubmit(vulkanBase->graphicsQueue, 1, &submitInfo, nullptr);
+    CHECK_VK_RESULT(vkQueueWaitIdle(vulkanBase->graphicsQueue));
+
+    vkDestroyBuffer(vulkanBase->device, stagingBuffer, nullptr);
+    vkFreeMemory(vulkanBase->device, stagingBufferMem, nullptr);
+
 }
 
 

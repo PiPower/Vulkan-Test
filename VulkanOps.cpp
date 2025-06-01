@@ -93,7 +93,8 @@ Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32
 
 VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
                              const char* path, const char* entryName,
-                             shaderc_shader_kind shaderKind, shaderc_compiler_t shaderCompiler)
+                             shaderc_shader_kind shaderKind, shaderc_compiler_t shaderCompiler, 
+                             shaderc_compile_options_t options)
 {
 	std::vector<char> shaderSrc = readFile(path);
     size_t fileNameOffset = strlen(path) - 1;
@@ -105,7 +106,7 @@ VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
 
 	shaderc_compilation_result_t result = shaderc_compile_into_spv(
 		shaderCompiler, shaderSrc.data(), shaderSrc.size() - 1,
-        shaderKind, path + fileNameOffset, entryName, nullptr);
+        shaderKind, path + fileNameOffset, entryName, options);
 
     shaderc_compilation_status errCount = shaderc_result_get_compilation_status(result);
     if (errCount != shaderc_compilation_status_success)

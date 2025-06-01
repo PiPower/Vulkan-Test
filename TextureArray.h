@@ -32,6 +32,7 @@ public:
 	~TextureArray();
 public:
 	std::vector<Image> images;
+	size_t imageDataSize;
 	uint8_t* dataBuffer;
 };
 

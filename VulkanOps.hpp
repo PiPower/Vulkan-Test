@@ -29,7 +29,10 @@ Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32
 
 VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
 							 const char* path, const char* entryName,
-							 shaderc_shader_kind shaderKind ,shaderc_compiler_t shaderCompiler);
+							 shaderc_shader_kind shaderKind ,shaderc_compiler_t shaderCompiler, 
+							 shaderc_compile_options_t options);
+
 UniformBuffer createUniformBuffer(VkDevice device, VkPhysicalDevice physicalDevice, VkDeviceSize buffSize,
 							std::vector<VkDeviceSize> offsets = {}, std::vector<VkDeviceSize> chunkLenghts = {});
+
 BufferMemoryProperties getBufferMemoryProperties(VkDevice device, VkDeviceSize buffSize, VkBufferUsageFlags usage);

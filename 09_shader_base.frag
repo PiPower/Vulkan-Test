@@ -1,4 +1,7 @@
 #version 450
+//#ifndef TEXTURE_COUNT
+//    #define TEXTURE_COUNT 1
+//#endif
 
 layout(binding = 0) uniform GlobalUbo
 {
@@ -11,9 +14,10 @@ layout(binding = 0) uniform GlobalUbo
 layout(binding = 2) uniform  PerObjUbo
 {
     mat4 model;
+    ivec4 indexVec;
 } localUbo;
 
-layout(binding = 1) uniform sampler2D texSampler;
+layout(binding = 1) uniform sampler2D texSampler[TEXTURE_COUNT];
 
 layout(location = 0) in vec3 faceNormal;
 layout(location = 1) in vec2 texCoord; 
@@ -32,5 +36,6 @@ void main()
    // vec4 texCol = texture(texSampler, texCoord);
     //vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
     //outColor = texCol * vec4(ambient + diffuse, 1.0f);
-    outColor = vec4(texCoord.x,texCoord.y,1.0,1.0);
+    vec4 texCol = texture(texSampler[0], texCoord);
+    outColor = texCol;
 }

@@ -7,7 +7,7 @@ using namespace std;
 size_t formatSizeTable[] = { 0, sizeof(int) };
 TextureArray::TextureArray(size_t initial_size)
 	:
-	dataBuffer(new uint8_t[initial_size])
+	dataBuffer(new uint8_t[initial_size]), imageDataSize(0)
 {
 
 }
@@ -60,6 +60,7 @@ bool TextureArray::loadFromFile(std::string path)
 
 	file.seekg(start);
 	file.read((char*)dataBuffer, requiredSize);
+	imageDataSize = requiredSize;
 
 	return true;
 }

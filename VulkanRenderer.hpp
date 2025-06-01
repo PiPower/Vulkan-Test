@@ -25,7 +25,7 @@ struct MeshCollection
 	std::vector<uint32_t> vbOffset;
 	std::vector<uint32_t> ibOffset;
 	std::vector<uint32_t> indexCount;
-
+	std::vector<uint32_t> materialIndex;
 };
 
 struct GlobalUbo
@@ -41,6 +41,7 @@ struct GlobalUbo
 struct PerObjUbo
 {
 	glm::mat4 model;
+	glm::ivec4 index;
 };
 
 
@@ -69,7 +70,8 @@ private:
 	void CreatePoolAndSets();
 	void CreateSampler();
 	void PrepareTexture();
-	std::vector<ImageFile*> GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, const std::string& sceneRootPath, const std::string& cachePath);
+	std::vector<ImageFile*> GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, 
+												const std::string& sceneRootPath, const std::string& cachePath);
 	void UploadImages(const TextureArray& textureArray);
 	void DrawItem(size_t idx);
 	void loadScene(const std::string& path);
@@ -96,5 +98,6 @@ private:
 	VkPipelineLayout pipelineLayout;
 	VulkanBase* vulkanBase;
 	Texture tex;
+	std::vector<Texture> materials;
 	VkSampler sampler;
 };
