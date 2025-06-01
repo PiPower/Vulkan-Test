@@ -256,7 +256,7 @@ void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& cente
     globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 90.0f);
     globalUbo.proj[1][1] *= -1;
-    globalUbo.lightPos = glm::vec4(6.0f, 2.0f, -4.0f, 0.0f);
+    globalUbo.lightPos = glm::vec4(0.0f, 3.0f,0.0f, 0.0f);
     globalUbo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
     memcpy(uboData, &globalUbo, sizeof(GlobalUbo));
 }
@@ -346,6 +346,10 @@ void VulkanRenderer::loadScene(const std::string& path)
             vert.pos.y = scene->mMeshes[i]->mVertices[j].y;
             vert.pos.z = scene->mMeshes[i]->mVertices[j].z;
             vert.pos.x = scene->mMeshes[i]->mVertices[j].x;
+
+            vert.normal.x = scene->mMeshes[i]->mNormals[j].x;
+            vert.normal.y = scene->mMeshes[i]->mNormals[j].y;
+            vert.normal.z = scene->mMeshes[i]->mNormals[j].z;
 
             vert.tex.x = scene->mMeshes[i]->mTextureCoords[0][j].x;
             vert.tex.y = scene->mMeshes[i]->mTextureCoords[0][j].y;
@@ -452,6 +456,10 @@ void VulkanRenderer::parseObjectTree(aiNode* node, const glm::mat4x4& transform)
         }
         obj.transformation.index = glm::ivec4();
         obj.name = node->mName.C_Str();
+        if (renderableItems.size() == 43)
+        {
+            int x = 2;
+        }
         renderableItems.push_back(std::move(obj));
     }
     for (size_t i = 0; i < node->mNumChildren; i++)

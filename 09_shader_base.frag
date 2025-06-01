@@ -35,14 +35,12 @@ layout(location = 0) out vec4 outColor;
 void main()
 {
 
-    //vec3 norm = normalize(faceNormal);
-    //vec3 lightDir = normalize(globalUbo.lightPos.xyz - worldPos.xyz);
-    //float diff = max(dot(norm, lightDir), 0.0);
-   // vec3 diffuse = diff * globalUbo.lightCol.xyz;
-
-   // vec4 texCol = texture(texSampler, texCoord);
-    //vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
-    //outColor = texCol * vec4(ambient + diffuse, 1.0f);
+    vec3 norm = normalize(faceNormal);
+    vec3 lightDir = normalize(globalUbo.lightPos.xyz - worldPos.xyz);
+    float diff = max(dot(norm, lightDir), 0.0);
+    vec3 diffuse = diff * globalUbo.lightCol.xyz;
+    //vec3 diffuse = vec3(0,0,0);
     vec4 texCol = texture(texSampler[PushConstants.index.x], texCoord);
-    outColor = texCol;
+    vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
+    outColor = texCol * vec4(ambient + diffuse, 1.0f);
 }
