@@ -170,25 +170,9 @@ void VulkanRenderer::Render()
 
     for (size_t item = 0; item < renderableItems.size() ; item++)
     {
-        // probably items 43, renderableItems.size() - 22, renderableItems.size() - 2,  requires technique that is some type of blending
-        if (item != 43 && item != renderableItems.size() - 22 && item != renderableItems.size() - 2)
-        {
-            DrawItem(item);
-        }
+        DrawItem(item);
     }
-    //uint32_t dynamicOffsetCount[1] = { 0 };
-    //vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
-    //vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
-    //vkCmdDrawIndexed(vulkanBase->cmdBuffer,faceCount * 3, 1, 0, 0, 0);
 
-    /*
-    for (int i = 0; i < SQUARE_COUNT; i++)
-    {
-        dynamicOffsetCount[0] = (uint32_t)uboPerObjProps.size * i;
-        vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descSet, 1, dynamicOffsetCount);
-        vkCmdDrawIndexed(vulkanBase->cmdBuffer, geometry.indexCount[0], 1, geometry.ibOffset[0], geometry.vbOffset[0], 0);
-    }
-    */
 
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
     vkEndCommandBuffer(vulkanBase->cmdBuffer);
@@ -256,7 +240,7 @@ void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& cente
     globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 90.0f);
     globalUbo.proj[1][1] *= -1;
-    globalUbo.lightPos = glm::vec4(0.0f, 3.0f,0.0f, 0.0f);
+    globalUbo.lightPos = glm::vec4(0.0f, 20.0f,0.0f, 0.0f);
     globalUbo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
     memcpy(uboData, &globalUbo, sizeof(GlobalUbo));
 }
@@ -637,12 +621,12 @@ void VulkanRenderer::CreateGraphicsPipeline()
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    colorBlendAttachment.blendEnable = VK_FALSE;
-    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+    colorBlendAttachment.blendEnable = VK_TRUE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; // Optional
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; // Optional
     colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD; // Optional
-    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE; // Optional
-    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // Optional
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; // Optional
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA; // Optional
     colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD; // Optional
 
     VkPipelineColorBlendStateCreateInfo blendInfo = {};

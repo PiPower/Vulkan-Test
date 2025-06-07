@@ -41,6 +41,10 @@ void main()
     vec3 diffuse = diff * globalUbo.lightCol.xyz;
     //vec3 diffuse = vec3(0,0,0);
     vec4 texCol = texture(texSampler[PushConstants.index.x], texCoord);
+    if(texCol.a == 0)
+    {
+        discard;
+    }
     vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
     outColor = texCol * vec4(ambient + diffuse, 1.0f);
 }
