@@ -427,29 +427,29 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat imgFormat)
 {
 	VkRenderPass renderPass;
 	VkAttachmentDescription attachmentDesc[2] = {};
-	attachmentDesc[0].format = imgFormat;
-	attachmentDesc[0].samples = VK_SAMPLE_COUNT_1_BIT;
-	attachmentDesc[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDesc[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDesc[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachmentDesc[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDesc[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDesc[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	attachmentDesc[1].format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+	attachmentDesc[1].format = imgFormat;
 	attachmentDesc[1].samples = VK_SAMPLE_COUNT_1_BIT;
 	attachmentDesc[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDesc[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDesc[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachmentDesc[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachmentDesc[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	attachmentDesc[0].format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+	attachmentDesc[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDesc[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDesc[0].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDesc[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDesc[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDesc[0].initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	attachmentDesc[0].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkAttachmentReference colorAttachmentRef{};
-	colorAttachmentRef.attachment = 0;
+	colorAttachmentRef.attachment = 1;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	VkAttachmentReference depthAttachmentRef{};
-	depthAttachmentRef.attachment = 1;
+	depthAttachmentRef.attachment = 0;
 	depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subpass = {};
@@ -486,7 +486,7 @@ std::vector<VkFramebuffer> createFramebuffers(VkDevice device, VkRenderPass rend
 	vector<VkFramebuffer> framebuffers(imgViews.size());
 	for (size_t i = 0; i < imgViews.size(); i++)
 	{
-		VkImageView views[2] = { imgViews[i], depthView };
+		VkImageView views[2] = { depthView, imgViews[i] };
 
 		VkFramebufferCreateInfo info = {};
 		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

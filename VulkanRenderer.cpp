@@ -10,6 +10,9 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <fstream>
 #define TEXTURE_FORMAT VK_FORMAT_R8G8B8A8_SRGB
+#include <locale>
+#include <codecvt>
+#include <string>
 
 using namespace std;
 struct Vertex
@@ -142,8 +145,8 @@ void VulkanRenderer::Render()
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = vulkanBase->swapchainInfo.capabilities.currentExtent;
     VkClearValue clearColor[2] = {};
-    clearColor[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
-    clearColor[1].depthStencil = { 1.0f, 0 };
+    clearColor[1].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    clearColor[0].depthStencil = { 1.0f, 0 };
 
     renderPassInfo.clearValueCount = 2;
     renderPassInfo.pClearValues = clearColor;
@@ -528,9 +531,6 @@ void VulkanRenderer::CreateUbo()
 
 void VulkanRenderer::CreateGraphicsPipeline()
 {
-    std::vector<char> vertSrc = readFile("vert.spv");
-    std::vector<char> fragSrc = readFile("frag.spv");
-
     string textureCount = to_string(materials.size());
     VkShaderModule vsModule, fsModule;
     shaderc_compile_options_t options = shaderc_compile_options_initialize();
@@ -1165,7 +1165,9 @@ std::vector<char> VulkanRenderer::readFile(const std::string& filename)
 
     if (!file.is_open()) 
     {
-        MessageBox(NULL, L"Failed to open file", NULL, MB_OK);
+        wstring msg(filename.begin(), filename.end());
+        msg = L"Failed to open file " + msg;
+        MessageBox(NULL, msg.c_str(), NULL, MB_OK);
         exit(-1);
     }
 
