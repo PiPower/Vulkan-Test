@@ -63,14 +63,11 @@ public:
 	void updateCameraLH(const glm::vec3& eye, const glm::vec3& center, const glm::vec3& up);
 	~VulkanRenderer();
 private:
-	void CreateVertexBuffer();
-	void CreateIndexBuffer();
 	void CreateUbo();
 	void CreateGraphicsPipeline();
 	void CreatePipelineLayout();
 	void CreatePoolAndSets();
 	void CreateSampler();
-	void PrepareTexture();
 	std::vector<ImageFile*> GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, 
 												const std::string& sceneRootPath, const std::string& cachePath);
 	void UploadImages(const TextureArray& textureArray);
@@ -79,7 +76,6 @@ private:
 	void parseObjectTree(aiNode* node, const glm::mat4x4& transform);
 	static std::vector<char> readFile(const std::string& filename);
 private:
-	MeshCollection geometry;
 	MeshCollection sceneGeometry;
 	std::vector<uint32_t> materialTextureIdx;
 	VkBuffer uboGlobal;
@@ -99,7 +95,6 @@ private:
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
 	VulkanBase* vulkanBase;
-	Texture tex;
 	std::vector<Texture> materials;
 	VkSampler sampler;
 };

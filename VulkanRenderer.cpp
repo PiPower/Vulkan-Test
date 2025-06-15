@@ -113,11 +113,8 @@ GLM_FUNC_QUALIFIER glm::mat<4, 4, T, Q> lookAtRH23(glm::vec<3, T, Q> const& eye,
 VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd, const std::string& path)
 {
     vulkanBase = createVulkanBase(hinstance, hwnd);
-    //CreateVertexBuffer();
-    //CreateIndexBuffer();
     loadScene(path);
     CreateSampler();
-    //PrepareTexture();
     CreatePipelineLayout();
     CreateGraphicsPipeline();
     CreateUbo();
@@ -417,13 +414,10 @@ void VulkanRenderer::loadScene(const std::string& path)
         }
         array.loadFromFile(cachePath);
     }
-
-
     // -------------------
     // Uploading materials to GPU
     // -------------------
     UploadImages(array);
-
 }
 
 void VulkanRenderer::parseObjectTree(aiNode* node, const glm::mat4x4& transform)
@@ -460,53 +454,6 @@ VulkanRenderer::~VulkanRenderer()
 
 }
 
-
-void VulkanRenderer::CreateVertexBuffer()
-{
-    VkBufferCreateInfo buffInfo = {};
-    buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffInfo.size = sizeof(Vertex) * vertices.size();
-    buffInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &geometry.vertexBuffer);
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(vulkanBase->device, geometry.vertexBuffer, &memRequirements);
-    geometry.vbDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    vkBindBufferMemory(vulkanBase->device, geometry.vertexBuffer, geometry.vbDevMem, 0);
-
-
-    void* data;
-    vkMapMemory(vulkanBase->device, geometry.vbDevMem, 0, buffInfo.size, 0, &data);
-    memcpy(data, vertices.data(), (size_t)buffInfo.size);
-    vkUnmapMemory(vulkanBase->device, geometry.vbDevMem);
-}
-
-void VulkanRenderer::CreateIndexBuffer()
-{
-    VkBufferCreateInfo buffInfo = {};
-    buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffInfo.size = sizeof(uint16_t) * indices.size();
-    buffInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &geometry.indexBuffer);
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(vulkanBase->device, geometry.indexBuffer, &memRequirements);
-    geometry.ibDevMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-
-    vkBindBufferMemory(vulkanBase->device, geometry.indexBuffer, geometry.ibDevMem, 0);
-
-    void* data;
-    vkMapMemory(vulkanBase->device, geometry.ibDevMem, 0, buffInfo.size, 0, &data);
-    memcpy(data, indices.data(), buffInfo.size);
-    vkUnmapMemory(vulkanBase->device, geometry.ibDevMem);
-
-
-
-}
 
 void VulkanRenderer::CreateUbo()
 {
@@ -814,106 +761,6 @@ void VulkanRenderer::CreateSampler()
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
     CHECK_VK_RESULT(vkCreateSampler(vulkanBase->device, &samplerInfo, nullptr, &sampler));
-}
-
-void VulkanRenderer::PrepareTexture()
-{
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingBufferMem;
-    void* stagingPtr;
-    ImageFile texImage(L"texture.png");
-
-    tex = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice, texImage.GetWidth(), texImage.GetHeight(), TEXTURE_FORMAT);
-    
-    VkBufferCreateInfo buffInfo = {};
-    buffInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffInfo.size = texImage.GetWidth() *  texImage.GetHeight() * 4;
-    buffInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    buffInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    vkCreateBuffer(vulkanBase->device, &buffInfo, nullptr, &stagingBuffer);
-
-    VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(vulkanBase->device, stagingBuffer, &memRequirements);
-    stagingBufferMem = allocateBuffer(vulkanBase->device, vulkanBase->physicalDevice, memRequirements, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    vkBindBufferMemory(vulkanBase->device, stagingBuffer, stagingBufferMem, 0);
-
-    vkMapMemory(vulkanBase->device, stagingBufferMem, 0, memRequirements.size, 0, &stagingPtr);
-    memcpy(stagingPtr, texImage.GetFilePtr(), buffInfo.size);
-    vkUnmapMemory(vulkanBase->device, stagingBufferMem);
-
-    // copy buffer to memory and transition all resources
-    VkCommandBufferBeginInfo cmdBuffInfo = {};
-    cmdBuffInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    cmdBuffInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkResetCommandBuffer(vulkanBase->cmdBuffer, 0);
-    vkBeginCommandBuffer(vulkanBase->cmdBuffer, &cmdBuffInfo);
-
-    VkImageMemoryBarrier copyBarrier = {};
-    copyBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    copyBarrier.srcAccessMask = 0;
-    copyBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-    copyBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    copyBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    copyBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copyBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copyBarrier.image = tex.texImage;
-    copyBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyBarrier.subresourceRange.baseMipLevel = 0;
-    copyBarrier.subresourceRange.levelCount = 1;
-    copyBarrier.subresourceRange.baseArrayLayer = 0;
-    copyBarrier.subresourceRange.layerCount = 1;
-
-    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &copyBarrier);
-
-    VkBufferImageCopy imgCopy = {};
-    imgCopy.bufferOffset = 0;
-    imgCopy.bufferRowLength = 0;
-    imgCopy.bufferImageHeight = 0;
-    imgCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    imgCopy.imageSubresource.mipLevel = 0;
-    imgCopy.imageSubresource.baseArrayLayer = 0;
-    imgCopy.imageSubresource.layerCount = 1;
-    imgCopy.imageOffset = { 0, 0, 0 };
-    imgCopy.imageExtent = {
-        (unsigned int)texImage.GetWidth(),
-        (unsigned int)texImage.GetHeight(),
-        1
-    };
-
-    vkCmdCopyBufferToImage(vulkanBase->cmdBuffer, stagingBuffer, tex.texImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imgCopy);
-
-    VkImageMemoryBarrier layoutBarrier = {};
-    layoutBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    layoutBarrier.srcAccessMask = 0;
-    layoutBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    layoutBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    layoutBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    layoutBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    layoutBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    layoutBarrier.image = tex.texImage;
-    layoutBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    layoutBarrier.subresourceRange.baseMipLevel = 0;
-    layoutBarrier.subresourceRange.levelCount = 1;
-    layoutBarrier.subresourceRange.baseArrayLayer = 0;
-    layoutBarrier.subresourceRange.layerCount = 1;
-
-    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &layoutBarrier);
-
-
-    vkEndCommandBuffer(vulkanBase->cmdBuffer);
-    VkSubmitInfo submitInfo = {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &vulkanBase->cmdBuffer;
-    vkQueueSubmit(vulkanBase->graphicsQueue, 1, &submitInfo, nullptr);
-    CHECK_VK_RESULT(vkQueueWaitIdle(vulkanBase->graphicsQueue));
-
-    vkDestroyBuffer(vulkanBase->device, stagingBuffer, nullptr);
-    vkFreeMemory(vulkanBase->device, stagingBufferMem, nullptr);
-
 }
 
 vector<ImageFile*> VulkanRenderer::GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, 

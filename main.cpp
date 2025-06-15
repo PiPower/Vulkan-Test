@@ -1,6 +1,5 @@
 #include "window.hpp"
 #include "VulkanRenderer.hpp"
-#include "Scene.hpp"
 #include <chrono>
 using namespace std;
 void updatePosition(float dt, Window* window, glm::vec3* eye, glm::vec3* centerVec, glm::vec3* up, glm::vec3* centerDir, glm::vec3* upLook);
