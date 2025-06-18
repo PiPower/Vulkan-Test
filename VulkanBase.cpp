@@ -109,18 +109,21 @@ VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd)
 	vulkanBase->swapchainInfo = querySwapChainSupport(vulkanBase->physicalDevice, vulkanBase->surface);
 	vulkanBase->swapchain = createSwapchain(vulkanBase->device, vulkanBase->surface, vulkanBase->swapchainInfo, 
 											vulkanBase->queueFamilies, &vulkanBase->swapchainFormat);
+	vulkanBase->renderTexture = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice,
+		vulkanBase->swapchainInfo.capabilities.currentExtent.width, vulkanBase->swapchainInfo.capabilities.currentExtent.height, VK_FORMAT_R8G8B8A8_UNORM,
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT| VK_IMAGE_USAGE_STORAGE_BIT);
 	vulkanBase->swapchainImages = createSwapchainImages(vulkanBase->device, vulkanBase->swapchain);
 	vulkanBase->swapchainImageViews = createSwapchainImageViews(vulkanBase->device, vulkanBase->swapchainImages, 
 																vulkanBase->swapchainInfo, vulkanBase->swapchainFormat);
 	vulkanBase->cmdPool = createCommandPool(vulkanBase->device, vulkanBase->queueFamilies.grahicsIdx);
 	vulkanBase->cmdBuffer = createCommandBuffers(vulkanBase->device, vulkanBase->cmdPool, 1)[0];
-	vulkanBase->renderPass = createRenderPass(vulkanBase->device, vulkanBase->swapchainFormat);
+	vulkanBase->renderPass = createRenderPass(vulkanBase->device, VK_FORMAT_R8G8B8A8_UNORM);
 	DepthBufferBundle bundle = createDepthBuffer(vulkanBase->device, vulkanBase->physicalDevice, vulkanBase->swapchainInfo);
 	vulkanBase->depthImage = bundle.depthImage;
 	vulkanBase->depthImageMemory = bundle.depthImageMemory;
 	vulkanBase->depthImageView = bundle.depthImageView;
 	vulkanBase->swapchainFramebuffers = createFramebuffers(vulkanBase->device, vulkanBase->renderPass, vulkanBase->depthImageView,
-															vulkanBase->swapchainImageViews, vulkanBase->swapchainInfo);
+		{ vulkanBase->renderTexture.texView }, vulkanBase->swapchainInfo);
 
 	VkSemaphoreCreateInfo semaphoreInfo{};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -434,7 +437,7 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat imgFormat)
 	attachmentDesc[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachmentDesc[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
 	attachmentDesc[0].format = VK_FORMAT_D32_SFLOAT_S8_UINT;
 	attachmentDesc[0].samples = VK_SAMPLE_COUNT_1_BIT;
@@ -559,8 +562,7 @@ VkSwapchainKHR createSwapchain(VkDevice device, VkSurfaceKHR surface, const Swap
 	size_t i;
 	for (i = 0; i < swapchainInfo.formats.size(); i++)
 	{
-		if(swapchainInfo.formats[i].format == VK_FORMAT_B8G8R8A8_SRGB &&
-		   swapchainInfo.formats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		if(swapchainInfo.formats[i].format == VK_FORMAT_R8G8B8A8_UNORM)		
 		{
 			break;
 		}
@@ -582,7 +584,7 @@ VkSwapchainKHR createSwapchain(VkDevice device, VkSurfaceKHR surface, const Swap
 	info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	info.surface = surface;
 	info.presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-	info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	info.imageArrayLayers = 1;
 	info.imageExtent = swapchainInfo.capabilities.currentExtent;

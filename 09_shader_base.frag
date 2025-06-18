@@ -47,4 +47,9 @@ void main()
     }
     vec3 ambient =  globalUbo.lightCol.w *  globalUbo.lightCol.xyz;
     outColor = texCol * vec4(ambient + diffuse, 1.0f);
+
+    float gamma = 2.2;
+    outColor = texCol;
+    outColor.rgb = pow(outColor.rgb, vec3(1.0/gamma));
+
 }

@@ -111,6 +111,8 @@ GLM_FUNC_QUALIFIER glm::mat<4, 4, T, Q> lookAtRH23(glm::vec<3, T, Q> const& eye,
 }
 
 VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd, const std::string& path)
+    :
+    firstRun(true)
 {
     vulkanBase = createVulkanBase(hinstance, hwnd);
     loadScene(path);
@@ -138,7 +140,7 @@ void VulkanRenderer::Render()
     VkRenderPassBeginInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     renderPassInfo.renderPass = vulkanBase->renderPass;
-    renderPassInfo.framebuffer = vulkanBase->swapchainFramebuffers[imageIndex];
+    renderPassInfo.framebuffer = vulkanBase->swapchainFramebuffers[0];
     renderPassInfo.renderArea.offset = { 0, 0 };
     renderPassInfo.renderArea.extent = vulkanBase->swapchainInfo.capabilities.currentExtent;
     VkClearValue clearColor[2] = {};
@@ -173,8 +175,58 @@ void VulkanRenderer::Render()
         DrawItem(item);
     }
 
-
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
+
+    VkImageMemoryBarrier copyToSwap = {};
+    copyToSwap.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    copyToSwap.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    copyToSwap.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    copyToSwap.oldLayout = firstRun ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    copyToSwap.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    copyToSwap.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyToSwap.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyToSwap.image = vulkanBase->swapchainImages[imageIndex];
+    copyToSwap.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyToSwap.subresourceRange.baseMipLevel = 0;
+    copyToSwap.subresourceRange.levelCount = 1;
+    copyToSwap.subresourceRange.baseArrayLayer = 0;
+    copyToSwap.subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &copyToSwap);
+
+    VkImageCopy copyDesc = {};
+    copyDesc.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyDesc.srcSubresource.baseArrayLayer = 0;
+    copyDesc.srcSubresource.layerCount = 1;
+    copyDesc.srcSubresource.mipLevel = 0;
+    copyDesc.srcOffset = { 0, 0, 0 };
+    copyDesc.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyDesc.dstSubresource.baseArrayLayer = 0;
+    copyDesc.dstSubresource.layerCount = 1;
+    copyDesc.dstSubresource.mipLevel = 0;
+    copyDesc.dstOffset = { 0, 0, 0 };
+    copyDesc.extent = { vulkanBase->swapchainInfo.capabilities.currentExtent.width, vulkanBase->swapchainInfo.capabilities.currentExtent.height, 1 };
+    vkCmdCopyImage(vulkanBase->cmdBuffer, vulkanBase->renderTexture.texImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        vulkanBase->swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyDesc);
+
+
+    VkImageMemoryBarrier copyToPresent = {};
+    copyToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    copyToPresent.srcAccessMask = 0;
+    copyToPresent.dstAccessMask = 0;
+    copyToPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    copyToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    copyToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyToPresent.image = vulkanBase->swapchainImages[imageIndex];
+    copyToPresent.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyToPresent.subresourceRange.baseMipLevel = 0;
+    copyToPresent.subresourceRange.levelCount = 1;
+    copyToPresent.subresourceRange.baseArrayLayer = 0;
+    copyToPresent.subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &copyToPresent);
+
     vkEndCommandBuffer(vulkanBase->cmdBuffer);
 
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
@@ -188,7 +240,6 @@ void VulkanRenderer::Render()
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = &vulkanBase->renderingFinished;
     vkQueueSubmit(vulkanBase->graphicsQueue, 1, &submitInfo, vulkanBase->gfxQueueFinished);
-
     VkPresentInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     info.swapchainCount = 1;
@@ -197,6 +248,13 @@ void VulkanRenderer::Render()
     info.waitSemaphoreCount = 1;
     info.pWaitSemaphores = &vulkanBase->renderingFinished;
     vkQueuePresentKHR(vulkanBase->presentationQueue, &info);
+
+    vkQueueWaitIdle(vulkanBase->presentationQueue);
+
+    if (imageIndex == 2)
+    {
+        firstRun = false;
+    }
 }
 
 void VulkanRenderer::updateRotation()

@@ -25,7 +25,8 @@ struct BufferMemoryProperties
 };
 VkDeviceMemory allocateBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
 							  VkMemoryRequirements memRequirements, VkMemoryPropertyFlags properties);
-Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height, VkFormat format);
+Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height, 
+					VkFormat format, VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 
 VkShaderModule compileShader(VkDevice device, VkAllocationCallbacks* callbacks,
 							 const char* path, const char* entryName,

@@ -50,8 +50,9 @@ VkDeviceMemory allocateBuffer(VkDevice device,VkPhysicalDevice physicalDevice,
     return devMem;
 }
 
-Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height, VkFormat format)
+Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage)
 {
+
     Texture texture = {};
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -62,9 +63,9 @@ Texture create2DTexture(VkDevice device, VkPhysicalDevice physicalDevice, uint32
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
     imageInfo.format = format;
-    imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
+    imageInfo.tiling = (usage & VK_IMAGE_USAGE_SAMPLED_BIT) == 0 ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.usage = usage;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 

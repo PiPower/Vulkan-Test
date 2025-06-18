@@ -97,4 +97,5 @@ private:
 	VulkanBase* vulkanBase;
 	std::vector<Texture> materials;
 	VkSampler sampler;
+	bool firstRun;
 };

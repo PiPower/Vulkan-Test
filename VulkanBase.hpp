@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <Windows.h>
 #include <vector>
-
+#include "VulkanOps.hpp"
 #define CHECK_VK_RESULT(result) validateVkResult(result)
 
 struct QueuesIdx
@@ -32,6 +32,7 @@ struct VulkanBase
 	SwapchainInfo swapchainInfo;
 	VkFormat swapchainFormat;
 	VkSwapchainKHR swapchain;
+	Texture renderTexture;
 	std::vector<VkImage> swapchainImages;
 	std::vector<VkImageView> swapchainImageViews;
 	std::vector<VkFramebuffer> swapchainFramebuffers;
