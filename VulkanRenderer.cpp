@@ -115,6 +115,8 @@ VulkanRenderer::VulkanRenderer(HINSTANCE hinstance, HWND hwnd, const std::string
     firstRun(true)
 {
     vulkanBase = createVulkanBase(hinstance, hwnd);
+    CreateComputeLayout();
+    CreateComputePipeline();
     loadScene(path);
     CreateSampler();
     CreatePipelineLayout();
@@ -298,7 +300,7 @@ void VulkanRenderer::updateCameraLH(const glm::vec3& eye, const glm::vec3& cente
     globalUbo.proj = glm::perspectiveLH_ZO(glm::radians(45.0f), vulkanBase->swapchainInfo.capabilities.currentExtent.width /
         (float)vulkanBase->swapchainInfo.capabilities.currentExtent.height, 0.1f, 90.0f);
     globalUbo.proj[1][1] *= -1;
-    globalUbo.lightPos = glm::vec4(0.0f, 20.0f,0.0f, 0.0f);
+    globalUbo.lightPos = glm::vec4(0.0f, 2.0f,0.0f, 0.0f);
     globalUbo.lightCol = glm::vec4(0.9f, 0.9f, 0.9f, 0.1f); // (colx, coly, colz, ambient factor)
     memcpy(uboData, &globalUbo, sizeof(GlobalUbo));
 }
@@ -681,6 +683,9 @@ void VulkanRenderer::CreateGraphicsPipeline()
     pipelineInfo.basePipelineIndex =  -1;
 
     vkCreateGraphicsPipelines(vulkanBase->device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
+
+    vkDestroyShaderModule(vulkanBase->device, fsModule, nullptr);
+    vkDestroyShaderModule(vulkanBase->device, vsModule, nullptr);
 }
 
 void VulkanRenderer::CreatePipelineLayout()
@@ -819,6 +824,68 @@ void VulkanRenderer::CreateSampler()
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
     CHECK_VK_RESULT(vkCreateSampler(vulkanBase->device, &samplerInfo, nullptr, &sampler));
+}
+
+void VulkanRenderer::CreateComputeLayout()
+{
+    VkDescriptorSetLayoutBinding bindings[2] = {};
+    bindings[0].binding = 0;
+    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    bindings[0].descriptorCount = 1;
+    bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    bindings[1].binding = 1;
+    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    bindings[1].descriptorCount = 1;
+    bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkDescriptorSetLayoutCreateInfo setInfo = {};
+    setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setInfo.bindingCount = 2;
+    setInfo.pBindings = bindings;
+
+    VkDescriptorSetLayout layout;
+    vkCreateDescriptorSetLayout(vulkanBase->device, &setInfo, nullptr, &layout);
+
+    VkPipelineLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.setLayoutCount = 1;
+    layoutInfo.pSetLayouts = &layout;
+
+    vkCreatePipelineLayout(vulkanBase->device, &layoutInfo, nullptr, &computePipelineLayout);
+
+}
+
+void VulkanRenderer::CreateComputePipeline()
+{
+    VkShaderModule computeModule;
+    shaderc_compile_options_t options = shaderc_compile_options_initialize();
+    shaderc_compiler_t compiler = shaderc_compiler_initialize();
+
+    computeModule = compileShader(vulkanBase->device, nullptr, "shader_compute.comp", "main", shaderc_compute_shader, compiler, options);
+
+    shaderc_compiler_release(compiler);
+    shaderc_compile_options_release(options);
+
+    VkPipelineShaderStageCreateInfo shaderInfo = {};
+    shaderInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    shaderInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    shaderInfo.module = computeModule;
+    shaderInfo.pName = "main";
+    shaderInfo.pSpecializationInfo = NULL;
+    
+
+    VkComputePipelineCreateInfo computeInfo = {};
+    computeInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computeInfo.layout = computePipelineLayout;
+    computeInfo.stage = shaderInfo;
+    computeInfo.basePipelineHandle = VK_NULL_HANDLE;
+    computeInfo.basePipelineIndex = -1;
+    
+    vkCreateComputePipelines(vulkanBase->device, VK_NULL_HANDLE, 1, &computeInfo, nullptr, &computePipeline);
+
+    vkDestroyShaderModule(vulkanBase->device, computeModule, nullptr);
+
 }
 
 vector<ImageFile*> VulkanRenderer::GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, 

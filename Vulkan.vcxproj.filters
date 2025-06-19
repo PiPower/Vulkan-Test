@@ -66,5 +66,6 @@
   <ItemGroup>
     <None Include="09_shader_base.vert" />
     <None Include="09_shader_base.frag" />
+    <None Include="shader_compute.comp" />
   </ItemGroup>
 </Project>

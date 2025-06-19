@@ -179,6 +179,7 @@
   <ItemGroup>
     <None Include="09_shader_base.frag" />
     <None Include="09_shader_base.vert" />
+    <None Include="shader_compute.comp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

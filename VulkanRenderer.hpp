@@ -68,6 +68,8 @@ private:
 	void CreatePipelineLayout();
 	void CreatePoolAndSets();
 	void CreateSampler();
+	void CreateComputeLayout();
+	void CreateComputePipeline();
 	std::vector<ImageFile*> GenerateTextureArrayCache(aiMaterial** materialArray, uint32_t materialCount, 
 												const std::string& sceneRootPath, const std::string& cachePath);
 	void UploadImages(const TextureArray& textureArray);
@@ -94,6 +96,8 @@ private:
 
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
+	VkPipeline computePipeline;
+	VkPipelineLayout computePipelineLayout;
 	VulkanBase* vulkanBase;
 	std::vector<Texture> materials;
 	VkSampler sampler;
