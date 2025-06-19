@@ -1,7 +1,7 @@
 #version 450
-//#ifndef TEXTURE_COUNT
-//    #define TEXTURE_COUNT 1
-//#endif
+#ifndef TEXTURE_COUNT
+    #define TEXTURE_COUNT 1
+#endif
 
 layout(binding = 0) uniform GlobalUbo
 {

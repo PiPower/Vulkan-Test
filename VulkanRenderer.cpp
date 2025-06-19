@@ -21,6 +21,13 @@ struct Vertex
     glm::vec3 normal;
     glm::vec2 tex;
 };
+#pragma pack(1)
+struct ComputeMetadata
+{
+    int resX;
+    int resY;
+    int padd[2];
+};
 
 uint32_t faceCount;
 
@@ -263,7 +270,7 @@ void VulkanRenderer::updateRotation()
 {
     angle += 0.0001;
     // first box
-    char* uboPerObj = (char*)uboData + uboGlobalProps.size;
+    char* uboPerObj = (char*)uboData + uboGlobalProps.size + uboComputeProps.size;
 
     for (size_t item = 0; item < renderableItems.size(); item++)
     {
@@ -520,19 +527,23 @@ void VulkanRenderer::CreateUbo()
     VkDeviceSize totalMemorySize = 0;
     uboGlobalProps = getBufferMemoryProperties(vulkanBase->device, sizeof(GlobalUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     totalMemorySize += uboGlobalProps.size;
+    uboComputeProps = getBufferMemoryProperties(vulkanBase->device, sizeof(ComputeMetadata), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+    totalMemorySize += uboComputeProps.size;
     uboPerObjProps = getBufferMemoryProperties(vulkanBase->device, sizeof(PerObjUbo), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
     totalMemorySize += uboPerObjProps.size * renderableItems.size();
 
-    vector<VkDeviceSize> offsets = { 0, uboGlobalProps.size};
-    vector<VkDeviceSize> sizes = { uboGlobalProps.size, uboPerObjProps.size * renderableItems.size() };
+    vector<VkDeviceSize> offsets = { 0, uboGlobalProps.size, uboComputeProps.size + uboGlobalProps.size };
+    vector<VkDeviceSize> sizes = { uboGlobalProps.size, uboComputeProps.size, uboPerObjProps.size * renderableItems.size() };
     UniformBuffer ubo = createUniformBuffer(vulkanBase->device, vulkanBase->physicalDevice, totalMemorySize, offsets, sizes);
-    
+
     vkDestroyBuffer(vulkanBase->device, ubo.globalBuffer, nullptr);
     uboGlobal = ubo.subBuffers[0];
-    uboPerObj = ubo.subBuffers[1];
+    uboCompute = ubo.subBuffers[1];
+    uboPerObj = ubo.subBuffers[2];
     uboDevMem = ubo.buffMem;
 
     vkMapMemory(vulkanBase->device, uboDevMem, 0, totalMemorySize, 0, &uboData);
+
 
 }
 
@@ -733,28 +744,35 @@ void VulkanRenderer::CreatePipelineLayout()
 void VulkanRenderer::CreatePoolAndSets()
 {
     
-    VkDescriptorPoolSize poolSize[3] = {};
+    VkDescriptorPoolSize poolSize[4] = {};
     poolSize[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize[0].descriptorCount = 1;
+    poolSize[0].descriptorCount = 2;
     poolSize[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     poolSize[1].descriptorCount = materials.size();
     poolSize[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     poolSize[2].descriptorCount = 1;
+    poolSize[3].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    poolSize[3].descriptorCount = 2;
 
     VkDescriptorPoolCreateInfo poolDesc = {};
     poolDesc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolDesc.maxSets = 1;
-    poolDesc.poolSizeCount = 3;
+    poolDesc.maxSets = 2;
+    poolDesc.poolSizeCount = 4;
     poolDesc.pPoolSizes = poolSize;
     vkCreateDescriptorPool(vulkanBase->device, &poolDesc, nullptr, &descPool);
 
+    VkDescriptorSetLayout layouts[2] = { descSetLayout, computeSetLayout};
+    VkDescriptorSet sets[2];
     VkDescriptorSetAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = descPool;
-    allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &descSetLayout;
-    vkAllocateDescriptorSets(vulkanBase->device, &allocInfo, &descSet);
+    allocInfo.descriptorSetCount = 2;
+    allocInfo.pSetLayouts = layouts;
+    vkAllocateDescriptorSets(vulkanBase->device, &allocInfo, sets);
+    descSet = sets[0];
+    computeDescSet = sets[1];
 
+    /*---- Graphics resources ----*/
     VkDescriptorBufferInfo globalUboBufferInfo = {};
     globalUboBufferInfo.buffer = uboGlobal;
     globalUboBufferInfo.offset = 0;
@@ -774,8 +792,23 @@ void VulkanRenderer::CreatePoolAndSets()
         imgInfos[i].sampler = sampler;
     }
 
- 
-    VkWriteDescriptorSet descriptorWrite[3] = {};
+    /*---- Compute resources ----*/
+
+    VkDescriptorImageInfo computeImgInfo[2];
+    computeImgInfo[0].imageView = vulkanBase->renderTexture.texView;
+    computeImgInfo[0].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    computeImgInfo[0].sampler = nullptr;
+
+    computeImgInfo[1].imageView = vulkanBase->computeTexture.texView;
+    computeImgInfo[1].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    computeImgInfo[1].sampler = nullptr;
+
+    VkDescriptorBufferInfo computeDataInfo = {};
+    computeDataInfo.buffer = uboCompute;
+    computeDataInfo.offset = 0;
+    computeDataInfo.range = uboComputeProps.size;
+
+    VkWriteDescriptorSet descriptorWrite[6] = {};
     descriptorWrite[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite[0].dstSet = descSet;
     descriptorWrite[0].dstBinding = 0;
@@ -799,8 +832,33 @@ void VulkanRenderer::CreatePoolAndSets()
     descriptorWrite[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     descriptorWrite[2].descriptorCount = 1;
     descriptorWrite[2].pBufferInfo = &perObjBufferInfo;
-    vkUpdateDescriptorSets(vulkanBase->device, 3, descriptorWrite, 0, nullptr);
 
+    /*---- Compute set ----*/
+    descriptorWrite[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite[3].dstSet = computeDescSet;
+    descriptorWrite[3].dstBinding = 0;
+    descriptorWrite[3].dstArrayElement = 0;
+    descriptorWrite[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorWrite[3].descriptorCount = 1;
+    descriptorWrite[3].pImageInfo = &computeImgInfo[0];
+
+    descriptorWrite[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite[4].dstSet = computeDescSet;
+    descriptorWrite[4].dstBinding = 1;
+    descriptorWrite[4].dstArrayElement = 0;
+    descriptorWrite[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorWrite[4].descriptorCount = 1;
+    descriptorWrite[4].pImageInfo = &computeImgInfo[1];
+
+    descriptorWrite[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite[5].dstSet = computeDescSet;
+    descriptorWrite[5].dstBinding = 2;
+    descriptorWrite[5].dstArrayElement = 0;
+    descriptorWrite[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    descriptorWrite[5].descriptorCount = 1;
+    descriptorWrite[5].pImageInfo = &computeImgInfo[1];
+
+    vkUpdateDescriptorSets(vulkanBase->device, 5, descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer::CreateSampler()
@@ -828,7 +886,7 @@ void VulkanRenderer::CreateSampler()
 
 void VulkanRenderer::CreateComputeLayout()
 {
-    VkDescriptorSetLayoutBinding bindings[2] = {};
+    VkDescriptorSetLayoutBinding bindings[3] = {};
     bindings[0].binding = 0;
     bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     bindings[0].descriptorCount = 1;
@@ -839,18 +897,22 @@ void VulkanRenderer::CreateComputeLayout()
     bindings[1].descriptorCount = 1;
     bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 
+    bindings[2].binding = 2;
+    bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bindings[2].descriptorCount = 1;
+    bindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
     VkDescriptorSetLayoutCreateInfo setInfo = {};
     setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    setInfo.bindingCount = 2;
+    setInfo.bindingCount = 3;
     setInfo.pBindings = bindings;
 
-    VkDescriptorSetLayout layout;
-    vkCreateDescriptorSetLayout(vulkanBase->device, &setInfo, nullptr, &layout);
+    vkCreateDescriptorSetLayout(vulkanBase->device, &setInfo, nullptr, &computeSetLayout);
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.setLayoutCount = 1;
-    layoutInfo.pSetLayouts = &layout;
+    layoutInfo.pSetLayouts = &computeSetLayout;
 
     vkCreatePipelineLayout(vulkanBase->device, &layoutInfo, nullptr, &computePipelineLayout);
 

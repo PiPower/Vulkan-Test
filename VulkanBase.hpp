@@ -33,6 +33,7 @@ struct VulkanBase
 	VkFormat swapchainFormat;
 	VkSwapchainKHR swapchain;
 	Texture renderTexture;
+	Texture computeTexture;
 	std::vector<VkImage> swapchainImages;
 	std::vector<VkImageView> swapchainImageViews;
 	std::vector<VkFramebuffer> swapchainFramebuffers;

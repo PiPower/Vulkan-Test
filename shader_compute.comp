@@ -1,5 +1,9 @@
 #version 450
 
+layout(binding = 2) uniform GlobalUbo
+{
+	vec4 data; // resX, resY, padd, padd
+} globalUbo;
 
 void main()
 {

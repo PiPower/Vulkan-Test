@@ -111,7 +111,11 @@ VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd)
 											vulkanBase->queueFamilies, &vulkanBase->swapchainFormat);
 	vulkanBase->renderTexture = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice,
 		vulkanBase->swapchainInfo.capabilities.currentExtent.width, vulkanBase->swapchainInfo.capabilities.currentExtent.height, VK_FORMAT_R8G8B8A8_UNORM,
-		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT| VK_IMAGE_USAGE_STORAGE_BIT);
+		VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+	vulkanBase->computeTexture = create2DTexture(vulkanBase->device, vulkanBase->physicalDevice,
+		vulkanBase->swapchainInfo.capabilities.currentExtent.width, vulkanBase->swapchainInfo.capabilities.currentExtent.height, VK_FORMAT_R8G8B8A8_UNORM,
+		 VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+
 	vulkanBase->swapchainImages = createSwapchainImages(vulkanBase->device, vulkanBase->swapchain);
 	vulkanBase->swapchainImageViews = createSwapchainImageViews(vulkanBase->device, vulkanBase->swapchainImages, 
 																vulkanBase->swapchainInfo, vulkanBase->swapchainFormat);
@@ -158,9 +162,24 @@ VulkanBase* createVulkanBase(HINSTANCE hinstance, HWND hwnd)
 	depthBarrier.subresourceRange.baseArrayLayer = 0;
 	depthBarrier.subresourceRange.layerCount = 1;
 
-	vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 0, 0, nullptr, 0, nullptr, 1, &depthBarrier);
+	VkImageMemoryBarrier computeBarrier = {};
+	computeBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	computeBarrier.srcAccessMask = 0;
+	computeBarrier.dstAccessMask = 0;
+	computeBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	computeBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+	computeBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	computeBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+	computeBarrier.image = vulkanBase->computeTexture.texImage;
+	computeBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	computeBarrier.subresourceRange.baseMipLevel = 0;
+	computeBarrier.subresourceRange.levelCount = 1;
+	computeBarrier.subresourceRange.baseArrayLayer = 0;
+	computeBarrier.subresourceRange.layerCount = 1;
 
+	VkImageMemoryBarrier barriers[2] = { depthBarrier , computeBarrier };
+	vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT, 0, 0, nullptr, 0, nullptr, 2, barriers);
 
 	vkEndCommandBuffer(vulkanBase->cmdBuffer);
 	VkSubmitInfo submitInfo = {};
@@ -437,7 +456,9 @@ VkRenderPass createRenderPass(VkDevice device, VkFormat imgFormat)
 	attachmentDesc[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachmentDesc[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	attachmentDesc[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	//attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_GENERAL; <- fill later
 	attachmentDesc[1].finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+
 
 	attachmentDesc[0].format = VK_FORMAT_D32_SFLOAT_S8_UINT;
 	attachmentDesc[0].samples = VK_SAMPLE_COUNT_1_BIT;

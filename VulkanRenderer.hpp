@@ -82,8 +82,10 @@ private:
 	std::vector<uint32_t> materialTextureIdx;
 	VkBuffer uboGlobal;
 	VkBuffer uboPerObj;
+	VkBuffer uboCompute;
 	BufferMemoryProperties uboGlobalProps;
 	BufferMemoryProperties uboPerObjProps;
+	BufferMemoryProperties uboComputeProps;
 	std::vector<Object> renderableItems;
 
 	VkDeviceMemory uboDevMem;
@@ -91,13 +93,17 @@ private:
 	float angle = 0.0f;
 
 	VkDescriptorPool descPool;
-	VkDescriptorSet descSet;
+	/*--- graphics pipeline ---*/
 	VkDescriptorSetLayout descSetLayout;
-
 	VkPipeline pipeline;
 	VkPipelineLayout pipelineLayout;
+	VkDescriptorSet descSet;
+	/*--- compute pipeline ---*/
 	VkPipeline computePipeline;
+	VkDescriptorSetLayout computeSetLayout;
 	VkPipelineLayout computePipelineLayout;
+	VkDescriptorSet computeDescSet;
+	/*------------------------*/
 	VulkanBase* vulkanBase;
 	std::vector<Texture> materials;
 	VkSampler sampler;
