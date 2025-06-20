@@ -186,22 +186,42 @@ void VulkanRenderer::Render()
 
     vkCmdEndRenderPass(vulkanBase->cmdBuffer);
 
-    VkImageMemoryBarrier copyToSwap = {};
-    copyToSwap.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    copyToSwap.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-    copyToSwap.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-    copyToSwap.oldLayout = firstRun ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    copyToSwap.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    copyToSwap.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copyToSwap.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copyToSwap.image = vulkanBase->swapchainImages[imageIndex];
-    copyToSwap.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyToSwap.subresourceRange.baseMipLevel = 0;
-    copyToSwap.subresourceRange.levelCount = 1;
-    copyToSwap.subresourceRange.baseArrayLayer = 0;
-    copyToSwap.subresourceRange.layerCount = 1;
+    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 0, nullptr);
 
-    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &copyToSwap);
+    vkCmdBindPipeline(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescSet, 0, nullptr);
+    vkCmdDispatch(vulkanBase->cmdBuffer, 50, 29, 1);
+
+    VkImageMemoryBarrier transferBarriers[2] = {};
+    transferBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    transferBarriers[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    transferBarriers[0].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    transferBarriers[0].oldLayout = firstRun ? VK_IMAGE_LAYOUT_UNDEFINED : VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    transferBarriers[0].newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    transferBarriers[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferBarriers[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferBarriers[0].image = vulkanBase->swapchainImages[imageIndex];
+    transferBarriers[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    transferBarriers[0].subresourceRange.baseMipLevel = 0;
+    transferBarriers[0].subresourceRange.levelCount = 1;
+    transferBarriers[0].subresourceRange.baseArrayLayer = 0;
+    transferBarriers[0].subresourceRange.layerCount = 1;
+
+    transferBarriers[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    transferBarriers[1].srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    transferBarriers[1].dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+    transferBarriers[1].oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+    transferBarriers[1].newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    transferBarriers[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferBarriers[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    transferBarriers[1].image = vulkanBase->computeTexture.texImage;
+    transferBarriers[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    transferBarriers[1].subresourceRange.baseMipLevel = 0;
+    transferBarriers[1].subresourceRange.levelCount = 1;
+    transferBarriers[1].subresourceRange.baseArrayLayer = 0;
+    transferBarriers[1].subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 2, transferBarriers);
 
     VkImageCopy copyDesc = {};
     copyDesc.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -215,26 +235,40 @@ void VulkanRenderer::Render()
     copyDesc.dstSubresource.mipLevel = 0;
     copyDesc.dstOffset = { 0, 0, 0 };
     copyDesc.extent = { vulkanBase->swapchainInfo.capabilities.currentExtent.width, vulkanBase->swapchainInfo.capabilities.currentExtent.height, 1 };
-    vkCmdCopyImage(vulkanBase->cmdBuffer, vulkanBase->renderTexture.texImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+    vkCmdCopyImage(vulkanBase->cmdBuffer, vulkanBase->computeTexture.texImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         vulkanBase->swapchainImages[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyDesc);
 
 
-    VkImageMemoryBarrier copyToPresent = {};
-    copyToPresent.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    copyToPresent.srcAccessMask = 0;
-    copyToPresent.dstAccessMask = 0;
-    copyToPresent.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    copyToPresent.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    copyToPresent.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copyToPresent.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    copyToPresent.image = vulkanBase->swapchainImages[imageIndex];
-    copyToPresent.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyToPresent.subresourceRange.baseMipLevel = 0;
-    copyToPresent.subresourceRange.levelCount = 1;
-    copyToPresent.subresourceRange.baseArrayLayer = 0;
-    copyToPresent.subresourceRange.layerCount = 1;
+    VkImageMemoryBarrier copyRestore[2] = {};
+    copyRestore[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    copyRestore[0].srcAccessMask = 0;
+    copyRestore[0].dstAccessMask = 0;
+    copyRestore[0].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    copyRestore[0].newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    copyRestore[0].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyRestore[0].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyRestore[0].image = vulkanBase->swapchainImages[imageIndex];
+    copyRestore[0].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRestore[0].subresourceRange.baseMipLevel = 0;
+    copyRestore[0].subresourceRange.levelCount = 1;
+    copyRestore[0].subresourceRange.baseArrayLayer = 0;
+    copyRestore[0].subresourceRange.layerCount = 1;
 
-    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1, &copyToPresent);
+    copyRestore[1].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    copyRestore[1].srcAccessMask = 0;
+    copyRestore[1].dstAccessMask = 0;
+    copyRestore[1].oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    copyRestore[1].newLayout = VK_IMAGE_LAYOUT_GENERAL;
+    copyRestore[1].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyRestore[1].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    copyRestore[1].image = vulkanBase->computeTexture.texImage;
+    copyRestore[1].subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRestore[1].subresourceRange.baseMipLevel = 0;
+    copyRestore[1].subresourceRange.levelCount = 1;
+    copyRestore[1].subresourceRange.baseArrayLayer = 0;
+    copyRestore[1].subresourceRange.layerCount = 1;
+
+    vkCmdPipelineBarrier(vulkanBase->cmdBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 2, copyRestore);
 
     vkEndCommandBuffer(vulkanBase->cmdBuffer);
 
@@ -257,8 +291,6 @@ void VulkanRenderer::Render()
     info.waitSemaphoreCount = 1;
     info.pWaitSemaphores = &vulkanBase->renderingFinished;
     vkQueuePresentKHR(vulkanBase->presentationQueue, &info);
-
-    vkQueueWaitIdle(vulkanBase->presentationQueue);
 
     if (imageIndex == 2)
     {
@@ -544,7 +576,11 @@ void VulkanRenderer::CreateUbo()
 
     vkMapMemory(vulkanBase->device, uboDevMem, 0, totalMemorySize, 0, &uboData);
 
+    ComputeMetadata data;
+    data.resX = vulkanBase->swapchainInfo.capabilities.currentExtent.width;
+    data.resY = vulkanBase->swapchainInfo.capabilities.currentExtent.height;
 
+    memcpy((char*)uboData + uboGlobalProps.size, &data, sizeof(ComputeMetadata));
 }
 
 void VulkanRenderer::CreateGraphicsPipeline()
@@ -856,9 +892,9 @@ void VulkanRenderer::CreatePoolAndSets()
     descriptorWrite[5].dstArrayElement = 0;
     descriptorWrite[5].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     descriptorWrite[5].descriptorCount = 1;
-    descriptorWrite[5].pImageInfo = &computeImgInfo[1];
+    descriptorWrite[5].pBufferInfo = &computeDataInfo;
 
-    vkUpdateDescriptorSets(vulkanBase->device, 5, descriptorWrite, 0, nullptr);
+    vkUpdateDescriptorSets(vulkanBase->device, 6, descriptorWrite, 0, nullptr);
 }
 
 void VulkanRenderer::CreateSampler()
