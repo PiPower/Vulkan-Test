@@ -190,7 +190,11 @@ void VulkanRenderer::Render()
 
     vkCmdBindPipeline(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
     vkCmdBindDescriptorSets(vulkanBase->cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 0, 1, &computeDescSet, 0, nullptr);
-    vkCmdDispatch(vulkanBase->cmdBuffer, 50, 29, 1);
+
+    int x_dispatch = vulkanBase->swapchainInfo.capabilities.currentExtent.width / 32 + 1;
+    int y_dispatch = vulkanBase->swapchainInfo.capabilities.currentExtent.height / 32 + 1;
+
+    vkCmdDispatch(vulkanBase->cmdBuffer, x_dispatch, y_dispatch, 1);
 
     VkImageMemoryBarrier transferBarriers[2] = {};
     transferBarriers[0].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
